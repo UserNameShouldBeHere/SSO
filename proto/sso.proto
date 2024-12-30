@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sso;
+
+// import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/UserNameShouldBeHere/SSO";
+
+service SSO {
+    rpc SignOn(SignOnRequest) returns (SignOnResponse) {}
+    rpc SignIn(SignInRequest) returns (SignInResponse) {}
+}
+
+message SignOnRequest {
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+message SignOnResponse {
+    string token = 1; // JWT token
+}
+
+message SignInRequest {
+    string email = 1;
+    string password = 2;
+}
+message SignInResponse {
+    string token = 1;
+}
