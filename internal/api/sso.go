@@ -14,6 +14,7 @@ type AuthService interface {
 	CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) (string, error)
 	LoginUser(ctx context.Context, userCreds domain.UserCredantialsLog) (string, error)
 	Check(ctx context.Context, token string) bool
+	Logout(ctx context.Context, token string) error
 }
 
 type SSOServer struct {
@@ -70,12 +71,23 @@ func (server *SSOServer) SignIn(ctx context.Context, req *sso.SignInRequest) (re
 
 func (server *SSOServer) Check(ctx context.Context, req *sso.CheckRequest) (resp *sso.CheckResponse, err error) {
 	if len(req.Token) == 0 {
-		return nil, status.Error(customErrors.GetGrpcStatus(customErrors.ErrDataNotValid), err.Error())
+		return nil, status.Error(customErrors.GetGrpcStatus(customErrors.ErrDataNotValid), "incorrect token")
 	}
 
 	stat := server.authService.Check(ctx, req.Token)
 
 	return &sso.CheckResponse{
 		Stat: stat,
+	}, nil
+}
+
+func (server *SSOServer) Logout(ctx context.Context, req *sso.LogoutRequest) (resp *sso.LogoutResponse, err error) {
+	err = server.authService.Logout(ctx, req.Token)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.LogoutResponse{
+		Stat: true,
 	}, nil
 }

@@ -22,6 +22,7 @@ type AuthStorage interface {
 type SessionStorage interface {
 	CreateSession(ctx context.Context, email string) (string, error)
 	Check(ctx context.Context, token string) (bool, error)
+	Logout(ctx context.Context, token string) error
 }
 
 type AuthService struct {
@@ -121,6 +122,16 @@ func (authService *AuthService) Check(ctx context.Context, token string) bool {
 	}
 
 	return stat
+}
+
+func (authService *AuthService) Logout(ctx context.Context, token string) error {
+	err := authService.sessionStorage.Logout(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		return err
+	}
+
+	return nil
 }
 
 func hashPassword(password string, salt []byte) ([]byte, error) {

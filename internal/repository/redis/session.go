@@ -58,12 +58,32 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 		return false, fmt.Errorf("%w (redis.Check)", customErrors.ErrFailedToSignToken)
 	}
 
-	err = sessionStorage.rdb.SIsMember(ctx, email.(string), token).Err()
-	if err != nil {
+	boolCmd := sessionStorage.rdb.SIsMember(ctx, email.(string), token)
+	if boolCmd.Err() != nil {
 		return false, fmt.Errorf("%w (redis.Check): %w", customErrors.ErrUnauthenticated, err)
 	}
 
-	return true, nil
+	return boolCmd.Val(), nil
+}
+
+func (sessionStorage *SessionStorage) Logout(ctx context.Context, token string) error {
+	claims, err := sessionStorage.getTokenClaims(token)
+	if err != nil {
+		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToSignToken, err)
+	}
+
+	email, ok := (*claims)["email"]
+
+	if !ok {
+		return fmt.Errorf("%w (redis.Logout)", customErrors.ErrFailedToSignToken)
+	}
+
+	err = sessionStorage.rdb.SRem(ctx, email.(string), token).Err()
+	if err != nil {
+		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	return nil
 }
 
 type myCustomClaims struct {
