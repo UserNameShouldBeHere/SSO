@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sso;
 
-// import "google/protobuf/timestamp.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "./sso";
 
@@ -13,6 +13,7 @@ service SSO {
     rpc LogoutCurrent(LogoutRequest) returns (LogoutResponse) {}
     rpc LogoutAll(LogoutRequest) returns (LogoutResponse) {}
     rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
+    rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
 }
 
 message SignUpRequest {
@@ -49,4 +50,19 @@ message LogoutResponse {
 message LogoutSessionRequest {
     string token = 1;
     string tokenForLogout = 2;
+}
+
+message User {
+    string uuid = 1;
+    string name = 2;
+    string email = 3;
+    uint32 permissionsLevel = 4;
+    google.protobuf.Timestamp registeredAt = 5;
+}
+
+message GetUserRequest {
+    string token = 1;
+}
+message GetUserResponse {
+    User user = 1;
 }

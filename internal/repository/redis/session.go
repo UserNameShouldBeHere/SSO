@@ -69,18 +69,18 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 func (sessionStorage *SessionStorage) LogoutCurrent(ctx context.Context, token string) error {
 	claims, err := sessionStorage.getTokenClaims(token)
 	if err != nil {
-		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToSignToken, err)
+		return fmt.Errorf("%w (redis.LogoutCurrent): %w", customErrors.ErrFailedToSignToken, err)
 	}
 
 	email, ok := (*claims)["email"]
 
 	if !ok {
-		return fmt.Errorf("%w (redis.Logout)", customErrors.ErrFailedToSignToken)
+		return fmt.Errorf("%w (redis.LogoutCurrent)", customErrors.ErrFailedToSignToken)
 	}
 
 	err = sessionStorage.rdb.SRem(ctx, email.(string), token).Err()
 	if err != nil {
-		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToExecuteMethod, err)
+		return fmt.Errorf("%w (redis.LogoutCurrent): %w", customErrors.ErrFailedToExecuteMethod, err)
 	}
 
 	return nil
@@ -109,21 +109,36 @@ func (sessionStorage *SessionStorage) LogoutAll(ctx context.Context, token strin
 func (sessionStorage *SessionStorage) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
 	claims, err := sessionStorage.getTokenClaims(token)
 	if err != nil {
-		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToSignToken, err)
+		return fmt.Errorf("%w (redis.LogoutSession): %w", customErrors.ErrFailedToSignToken, err)
 	}
 
 	email, ok := (*claims)["email"]
 
 	if !ok {
-		return fmt.Errorf("%w (redis.Logout)", customErrors.ErrFailedToSignToken)
+		return fmt.Errorf("%w (redis.LogoutSession)", customErrors.ErrFailedToSignToken)
 	}
 
 	err = sessionStorage.rdb.SRem(ctx, email.(string), tokenForLogout).Err()
 	if err != nil {
-		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToExecuteMethod, err)
+		return fmt.Errorf("%w (redis.LogoutSession): %w", customErrors.ErrFailedToExecuteMethod, err)
 	}
 
 	return nil
+}
+
+func (sessionStorage *SessionStorage) GetUserEmail(ctx context.Context, token string) (string, error) {
+	claims, err := sessionStorage.getTokenClaims(token)
+	if err != nil {
+		return "", fmt.Errorf("%w (redis.GetUserEmail): %w", customErrors.ErrFailedToSignToken, err)
+	}
+
+	email, ok := (*claims)["email"]
+
+	if !ok {
+		return "", fmt.Errorf("%w (redis.GetUserEmail)", customErrors.ErrFailedToSignToken)
+	}
+
+	return email.(string), nil
 }
 
 type myCustomClaims struct {

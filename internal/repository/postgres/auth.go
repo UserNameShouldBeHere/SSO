@@ -69,6 +69,30 @@ func (authStorage *AuthStorage) GetPassword(ctx context.Context, email string) (
 	return password, nil
 }
 
+func (authStorage *AuthStorage) GetUser(ctx context.Context, email string) (domain.User, error) {
+	var user domain.User
+
+	err := authStorage.pool.QueryRow(ctx, `
+		select uuid, name, email, permissions_level, registered_at
+		from users
+		where email = $1;
+	`, email).Scan(
+		&user.Uuid,
+		&user.Name,
+		&user.Email,
+		&user.PermissionsLevel,
+		&user.RegisteredAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.User{}, fmt.Errorf("%w (postgres.GetPassword): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return domain.User{}, fmt.Errorf("%w (postgres.GetPassword): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	return user, nil
+}
+
 func (authStorage *AuthStorage) hasUser(ctx context.Context, email string) (bool, error) {
 	err := authStorage.pool.QueryRow(ctx, `
 		select

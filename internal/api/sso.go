@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/UserNameShouldBeHere/SSO/internal/domain"
 	customErrors "github.com/UserNameShouldBeHere/SSO/internal/errors"
@@ -17,6 +19,7 @@ type AuthService interface {
 	LogoutCurrent(ctx context.Context, token string) error
 	LogoutAll(ctx context.Context, token string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
+	GetUser(ctx context.Context, token string) (domain.User, error)
 }
 
 type SSOServer struct {
@@ -83,7 +86,9 @@ func (server *SSOServer) Check(ctx context.Context, req *sso.CheckRequest) (resp
 	}, nil
 }
 
-func (server *SSOServer) LogoutCurrent(ctx context.Context, req *sso.LogoutRequest) (resp *sso.LogoutResponse, err error) {
+func (server *SSOServer) LogoutCurrent(
+	ctx context.Context, req *sso.LogoutRequest) (resp *sso.LogoutResponse, err error) {
+
 	err = server.authService.LogoutCurrent(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
@@ -116,4 +121,28 @@ func (server *SSOServer) LogoutSession(
 	return &sso.LogoutResponse{
 		Stat: true,
 	}, nil
+}
+
+func (server *SSOServer) GetUser(ctx context.Context, req *sso.GetUserRequest) (resp *sso.GetUserResponse, err error) {
+	user, err := server.authService.GetUser(ctx, req.Token)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.GetUserResponse{
+		User: &sso.User{
+			Uuid:             user.Uuid,
+			Name:             user.Name,
+			Email:            user.Email,
+			PermissionsLevel: user.PermissionsLevel,
+			RegisteredAt:     convertTimeToProto(user.RegisteredAt),
+		},
+	}, nil
+}
+
+func convertTimeToProto(time time.Time) *timestamppb.Timestamp {
+	return &timestamppb.Timestamp{
+		Seconds: time.Unix(),
+		Nanos:   int32(time.Nanosecond()),
+	}
 }

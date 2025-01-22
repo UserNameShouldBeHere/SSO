@@ -17,6 +17,7 @@ import (
 type AuthStorage interface {
 	CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) error
 	GetPassword(ctx context.Context, email string) (string, error)
+	GetUser(ctx context.Context, email string) (domain.User, error)
 }
 
 type SessionStorage interface {
@@ -25,6 +26,7 @@ type SessionStorage interface {
 	LogoutCurrent(ctx context.Context, token string) error
 	LogoutAll(ctx context.Context, token string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
+	GetUserEmail(ctx context.Context, token string) (string, error)
 }
 
 type AuthService struct {
@@ -131,7 +133,7 @@ func (authService *AuthService) Check(ctx context.Context, token string) bool {
 func (authService *AuthService) LogoutCurrent(ctx context.Context, token string) error {
 	err := authService.sessionStorage.LogoutCurrent(ctx, token)
 	if err != nil {
-		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		authService.logger.Errorf("failed to logout session (service.LogoutCurrent): %w", err)
 		return err
 	}
 
@@ -141,7 +143,7 @@ func (authService *AuthService) LogoutCurrent(ctx context.Context, token string)
 func (authService *AuthService) LogoutAll(ctx context.Context, token string) error {
 	err := authService.sessionStorage.LogoutAll(ctx, token)
 	if err != nil {
-		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		authService.logger.Errorf("failed to logout session (service.LogoutAll): %w", err)
 		return err
 	}
 
@@ -151,11 +153,27 @@ func (authService *AuthService) LogoutAll(ctx context.Context, token string) err
 func (authService *AuthService) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
 	err := authService.sessionStorage.LogoutSession(ctx, token, tokenForLogout)
 	if err != nil {
-		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		authService.logger.Errorf("failed to logout session (service.LogoutSession): %w", err)
 		return err
 	}
 
 	return nil
+}
+
+func (authService *AuthService) GetUser(ctx context.Context, token string) (domain.User, error) {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.GetUser): %w", err)
+		return domain.User{}, err
+	}
+
+	user, err := authService.authStorage.GetUser(ctx, email)
+	if err != nil {
+		authService.logger.Errorf("failed to get user data (service.GetUser): %w", err)
+		return domain.User{}, err
+	}
+
+	return user, nil
 }
 
 func hashPassword(password string, salt []byte) ([]byte, error) {
