@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,8 +10,17 @@ import (
 	"os/signal"
 	"syscall"
 
-	gen "github.com/UserNameShouldBeHere/SSO/internal/proto"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+
+	"github.com/UserNameShouldBeHere/SSO/internal/api"
+	sso "github.com/UserNameShouldBeHere/SSO/internal/proto"
+	postgresRepo "github.com/UserNameShouldBeHere/SSO/internal/repository/postgres"
+	redisRepo "github.com/UserNameShouldBeHere/SSO/internal/repository/redis"
+	"github.com/UserNameShouldBeHere/SSO/internal/services"
 )
 
 func main() {
@@ -20,9 +30,60 @@ func main() {
 
 	flag.Parse()
 
+	config := zap.Config{
+		Level:            zap.NewAtomicLevelAt(zapcore.DebugLevel),
+		Development:      true,
+		Encoding:         "console",
+		EncoderConfig:    zap.NewProductionEncoderConfig(),
+		OutputPaths:      []string{"stdout"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	logger, err := config.Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+	sugarLogger := logger.Sugar()
+
+	pool, err := pgxpool.New(context.Background(), fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		"localhost",
+		"5432",
+		"postgres",
+		"root1234",
+		"auth",
+	))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
+	authStorage, err := postgresRepo.NewAuthStorage(pool)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sessionStorage, err := redisRepo.NewSessionStorage(rdb, 20)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	authService, err := services.NewAuthService(authStorage, sessionStorage, sugarLogger)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	s := grpc.NewServer()
-	srv := gen.UnimplementedSSOServer{}
-	gen.RegisterSSOServer(s, srv)
+	srv, err := api.NewSSOServer(authService)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sso.RegisterSSOServer(s, srv)
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {

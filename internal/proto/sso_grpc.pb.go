@@ -4,7 +4,7 @@
 // - protoc             v5.29.2
 // source: proto/sso.proto
 
-package SSO
+package sso
 
 import (
 	context "context"
@@ -19,16 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SSO_SignOn_FullMethodName = "/sso.SSO/SignOn"
+	SSO_SignUp_FullMethodName = "/sso.SSO/SignUp"
 	SSO_SignIn_FullMethodName = "/sso.SSO/SignIn"
+	SSO_Check_FullMethodName  = "/sso.SSO/Check"
 )
 
 // SSOClient is the client API for SSO service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SSOClient interface {
-	SignOn(ctx context.Context, in *SignOnRequest, opts ...grpc.CallOption) (*SignOnResponse, error)
+	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 	SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+	Check(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
 }
 
 type sSOClient struct {
@@ -39,10 +41,10 @@ func NewSSOClient(cc grpc.ClientConnInterface) SSOClient {
 	return &sSOClient{cc}
 }
 
-func (c *sSOClient) SignOn(ctx context.Context, in *SignOnRequest, opts ...grpc.CallOption) (*SignOnResponse, error) {
+func (c *sSOClient) SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SignOnResponse)
-	err := c.cc.Invoke(ctx, SSO_SignOn_FullMethodName, in, out, cOpts...)
+	out := new(SignUpResponse)
+	err := c.cc.Invoke(ctx, SSO_SignUp_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +61,23 @@ func (c *sSOClient) SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.
 	return out, nil
 }
 
+func (c *sSOClient) Check(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckResponse)
+	err := c.cc.Invoke(ctx, SSO_Check_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SSOServer is the server API for SSO service.
 // All implementations must embed UnimplementedSSOServer
 // for forward compatibility.
 type SSOServer interface {
-	SignOn(context.Context, *SignOnRequest) (*SignOnResponse, error)
+	SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error)
 	SignIn(context.Context, *SignInRequest) (*SignInResponse, error)
+	Check(context.Context, *CheckRequest) (*CheckResponse, error)
 	mustEmbedUnimplementedSSOServer()
 }
 
@@ -75,11 +88,14 @@ type SSOServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSSOServer struct{}
 
-func (UnimplementedSSOServer) SignOn(context.Context, *SignOnRequest) (*SignOnResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignOn not implemented")
+func (UnimplementedSSOServer) SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignUp not implemented")
 }
 func (UnimplementedSSOServer) SignIn(context.Context, *SignInRequest) (*SignInResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
+}
+func (UnimplementedSSOServer) Check(context.Context, *CheckRequest) (*CheckResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
 func (UnimplementedSSOServer) mustEmbedUnimplementedSSOServer() {}
 func (UnimplementedSSOServer) testEmbeddedByValue()             {}
@@ -102,20 +118,20 @@ func RegisterSSOServer(s grpc.ServiceRegistrar, srv SSOServer) {
 	s.RegisterService(&SSO_ServiceDesc, srv)
 }
 
-func _SSO_SignOn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignOnRequest)
+func _SSO_SignUp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignUpRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SSOServer).SignOn(ctx, in)
+		return srv.(SSOServer).SignUp(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SSO_SignOn_FullMethodName,
+		FullMethod: SSO_SignUp_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SSOServer).SignOn(ctx, req.(*SignOnRequest))
+		return srv.(SSOServer).SignUp(ctx, req.(*SignUpRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -138,6 +154,24 @@ func _SSO_SignIn_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SSO_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).Check(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_Check_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).Check(ctx, req.(*CheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SSO_ServiceDesc is the grpc.ServiceDesc for SSO service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -146,12 +180,16 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SSOServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SignOn",
-			Handler:    _SSO_SignOn_Handler,
+			MethodName: "SignUp",
+			Handler:    _SSO_SignUp_Handler,
 		},
 		{
 			MethodName: "SignIn",
 			Handler:    _SSO_SignIn_Handler,
+		},
+		{
+			MethodName: "Check",
+			Handler:    _SSO_Check_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

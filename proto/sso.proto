@@ -4,19 +4,20 @@ package sso;
 
 // import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/UserNameShouldBeHere/SSO";
+option go_package = "./sso";
 
 service SSO {
-    rpc SignOn(SignOnRequest) returns (SignOnResponse) {}
+    rpc SignUp(SignUpRequest) returns (SignUpResponse) {}
     rpc SignIn(SignInRequest) returns (SignInResponse) {}
+    rpc Check(CheckRequest) returns (CheckResponse) {}
 }
 
-message SignOnRequest {
+message SignUpRequest {
     string name = 1;
     string email = 2;
     string password = 3;
 }
-message SignOnResponse {
+message SignUpResponse {
     string token = 1; // JWT token
 }
 
@@ -26,4 +27,11 @@ message SignInRequest {
 }
 message SignInResponse {
     string token = 1;
+}
+
+message CheckRequest {
+    string token = 1;
+}
+message CheckResponse {
+    bool stat = 1;
 }
