@@ -66,7 +66,7 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 	return boolCmd.Val(), nil
 }
 
-func (sessionStorage *SessionStorage) Logout(ctx context.Context, token string) error {
+func (sessionStorage *SessionStorage) LogoutCurrent(ctx context.Context, token string) error {
 	claims, err := sessionStorage.getTokenClaims(token)
 	if err != nil {
 		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToSignToken, err)
@@ -79,6 +79,46 @@ func (sessionStorage *SessionStorage) Logout(ctx context.Context, token string) 
 	}
 
 	err = sessionStorage.rdb.SRem(ctx, email.(string), token).Err()
+	if err != nil {
+		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	return nil
+}
+
+func (sessionStorage *SessionStorage) LogoutAll(ctx context.Context, token string) error {
+	claims, err := sessionStorage.getTokenClaims(token)
+	if err != nil {
+		return fmt.Errorf("%w (redis.LogoutAll): %w", customErrors.ErrFailedToSignToken, err)
+	}
+
+	email, ok := (*claims)["email"]
+
+	if !ok {
+		return fmt.Errorf("%w (redis.LogoutAll)", customErrors.ErrFailedToSignToken)
+	}
+
+	err = sessionStorage.rdb.Del(ctx, email.(string)).Err()
+	if err != nil {
+		return fmt.Errorf("%w (redis.LogoutAll): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	return nil
+}
+
+func (sessionStorage *SessionStorage) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
+	claims, err := sessionStorage.getTokenClaims(token)
+	if err != nil {
+		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToSignToken, err)
+	}
+
+	email, ok := (*claims)["email"]
+
+	if !ok {
+		return fmt.Errorf("%w (redis.Logout)", customErrors.ErrFailedToSignToken)
+	}
+
+	err = sessionStorage.rdb.SRem(ctx, email.(string), tokenForLogout).Err()
 	if err != nil {
 		return fmt.Errorf("%w (redis.Logout): %w", customErrors.ErrFailedToExecuteMethod, err)
 	}

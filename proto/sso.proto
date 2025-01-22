@@ -10,7 +10,9 @@ service SSO {
     rpc SignUp(SignUpRequest) returns (SignUpResponse) {}
     rpc SignIn(SignInRequest) returns (SignInResponse) {}
     rpc Check(CheckRequest) returns (CheckResponse) {}
-    rpc Logout(LogoutRequest) returns (LogoutResponse) {}
+    rpc LogoutCurrent(LogoutRequest) returns (LogoutResponse) {}
+    rpc LogoutAll(LogoutRequest) returns (LogoutResponse) {}
+    rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
 }
 
 message SignUpRequest {
@@ -42,4 +44,9 @@ message LogoutRequest {
 }
 message LogoutResponse {
     bool stat = 1;
+}
+
+message LogoutSessionRequest {
+    string token = 1;
+    string tokenForLogout = 2;
 }

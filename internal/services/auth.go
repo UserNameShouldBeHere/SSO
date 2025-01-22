@@ -22,7 +22,9 @@ type AuthStorage interface {
 type SessionStorage interface {
 	CreateSession(ctx context.Context, email string) (string, error)
 	Check(ctx context.Context, token string) (bool, error)
-	Logout(ctx context.Context, token string) error
+	LogoutCurrent(ctx context.Context, token string) error
+	LogoutAll(ctx context.Context, token string) error
+	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 }
 
 type AuthService struct {
@@ -32,7 +34,9 @@ type AuthService struct {
 	saltLength     int
 }
 
-func NewAuthService(authStorage AuthStorage, sessionStorage SessionStorage, logger *zap.SugaredLogger) (*AuthService, error) {
+func NewAuthService(
+	authStorage AuthStorage, sessionStorage SessionStorage, logger *zap.SugaredLogger) (*AuthService, error) {
+
 	return &AuthService{
 		authStorage:    authStorage,
 		sessionStorage: sessionStorage,
@@ -124,8 +128,28 @@ func (authService *AuthService) Check(ctx context.Context, token string) bool {
 	return stat
 }
 
-func (authService *AuthService) Logout(ctx context.Context, token string) error {
-	err := authService.sessionStorage.Logout(ctx, token)
+func (authService *AuthService) LogoutCurrent(ctx context.Context, token string) error {
+	err := authService.sessionStorage.LogoutCurrent(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) LogoutAll(ctx context.Context, token string) error {
+	err := authService.sessionStorage.LogoutAll(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
+	err := authService.sessionStorage.LogoutSession(ctx, token, tokenForLogout)
 	if err != nil {
 		authService.logger.Errorf("failed to logout session (service.Logout): %w", err)
 		return err

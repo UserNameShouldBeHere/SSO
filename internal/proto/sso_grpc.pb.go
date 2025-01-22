@@ -19,10 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SSO_SignUp_FullMethodName = "/sso.SSO/SignUp"
-	SSO_SignIn_FullMethodName = "/sso.SSO/SignIn"
-	SSO_Check_FullMethodName  = "/sso.SSO/Check"
-	SSO_Logout_FullMethodName = "/sso.SSO/Logout"
+	SSO_SignUp_FullMethodName        = "/sso.SSO/SignUp"
+	SSO_SignIn_FullMethodName        = "/sso.SSO/SignIn"
+	SSO_Check_FullMethodName         = "/sso.SSO/Check"
+	SSO_LogoutCurrent_FullMethodName = "/sso.SSO/LogoutCurrent"
+	SSO_LogoutAll_FullMethodName     = "/sso.SSO/LogoutAll"
+	SSO_LogoutSession_FullMethodName = "/sso.SSO/LogoutSession"
 )
 
 // SSOClient is the client API for SSO service.
@@ -32,7 +34,9 @@ type SSOClient interface {
 	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 	SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
 	Check(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
-	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	LogoutCurrent(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	LogoutAll(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 }
 
 type sSOClient struct {
@@ -70,9 +74,27 @@ func (c *sSOClient) Check(ctx context.Context, in *CheckRequest, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *sSOClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+func (c *sSOClient) LogoutCurrent(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
 	out := new(LogoutResponse)
-	err := c.cc.Invoke(ctx, SSO_Logout_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, SSO_LogoutCurrent_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) LogoutAll(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, SSO_LogoutAll_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, SSO_LogoutSession_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +108,9 @@ type SSOServer interface {
 	SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error)
 	SignIn(context.Context, *SignInRequest) (*SignInResponse, error)
 	Check(context.Context, *CheckRequest) (*CheckResponse, error)
-	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
+	LogoutCurrent(context.Context, *LogoutRequest) (*LogoutResponse, error)
+	LogoutAll(context.Context, *LogoutRequest) (*LogoutResponse, error)
+	LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error)
 	mustEmbedUnimplementedSSOServer()
 }
 
@@ -103,8 +127,14 @@ func (UnimplementedSSOServer) SignIn(context.Context, *SignInRequest) (*SignInRe
 func (UnimplementedSSOServer) Check(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
-func (UnimplementedSSOServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
+func (UnimplementedSSOServer) LogoutCurrent(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogoutCurrent not implemented")
+}
+func (UnimplementedSSOServer) LogoutAll(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogoutAll not implemented")
+}
+func (UnimplementedSSOServer) LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LogoutSession not implemented")
 }
 func (UnimplementedSSOServer) mustEmbedUnimplementedSSOServer() {}
 
@@ -173,20 +203,56 @@ func _SSO_Check_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SSO_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _SSO_LogoutCurrent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LogoutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SSOServer).Logout(ctx, in)
+		return srv.(SSOServer).LogoutCurrent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SSO_Logout_FullMethodName,
+		FullMethod: SSO_LogoutCurrent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SSOServer).Logout(ctx, req.(*LogoutRequest))
+		return srv.(SSOServer).LogoutCurrent(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_LogoutAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).LogoutAll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_LogoutAll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).LogoutAll(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_LogoutSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).LogoutSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_LogoutSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).LogoutSession(ctx, req.(*LogoutSessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -211,8 +277,16 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SSO_Check_Handler,
 		},
 		{
-			MethodName: "Logout",
-			Handler:    _SSO_Logout_Handler,
+			MethodName: "LogoutCurrent",
+			Handler:    _SSO_LogoutCurrent_Handler,
+		},
+		{
+			MethodName: "LogoutAll",
+			Handler:    _SSO_LogoutAll_Handler,
+		},
+		{
+			MethodName: "LogoutSession",
+			Handler:    _SSO_LogoutSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
