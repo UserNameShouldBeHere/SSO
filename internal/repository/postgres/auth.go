@@ -141,7 +141,12 @@ func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, email string) (
 
 	for rows.Next() {
 		var user domain.UserSession
-		rows.Scan(&user.Uuid, &user.Name, &user.Email, &user.PermissionsLevel, &user.RegisteredAt)
+
+		err = rows.Scan(&user.Uuid, &user.Name, &user.Email, &user.PermissionsLevel, &user.RegisteredAt)
+		if err != nil {
+			return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
+		}
+
 		users = append(users, user)
 	}
 	if rows.Err() != nil {

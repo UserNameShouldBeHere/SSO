@@ -201,23 +201,39 @@ func (authService *AuthService) RemoveUser(ctx context.Context, token string) er
 	return nil
 }
 
-func (authService *AuthService) GetUserSessions(ctx context.Context, token string) ([]domain.UserSession, error) {
+func (authService *AuthService) GetAllSessions(ctx context.Context, token string) ([]string, error) {
 	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
 	if err != nil {
-		authService.logger.Errorf("failed to get user email (service.GetUserSessions): %w", err)
+		authService.logger.Errorf("failed to get user email (service.GetAllSessions): %w", err)
+		return nil, err
+	}
+
+	tokens, err := authService.sessionStorage.GetUserSessions(ctx, email)
+	if err != nil {
+		authService.logger.Errorf("failed to get user sessions (service.GetAllSessions): %w", err)
+		return nil, err
+	}
+
+	return tokens, nil
+}
+
+func (authService *AuthService) GetUsersSessions(ctx context.Context, token string) ([]domain.UserSession, error) {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.GetUsersSessions): %w", err)
 		return nil, err
 	}
 
 	users, err := authService.authStorage.GetAllUsers(ctx, email)
 	if err != nil {
-		authService.logger.Errorf("failed to get all users (service.GetUserSessions): %w", err)
+		authService.logger.Errorf("failed to get all users (service.GetUsersSessions): %w", err)
 		return nil, err
 	}
 
 	for i, user := range users {
 		tokens, err := authService.sessionStorage.GetUserSessions(ctx, user.Email)
 		if err != nil {
-			authService.logger.Errorf("failed to get user sessions (service.GetUserSessions): %w", err)
+			authService.logger.Errorf("failed to get user sessions (service.GetUsersSessions): %w", err)
 			return nil, err
 		}
 

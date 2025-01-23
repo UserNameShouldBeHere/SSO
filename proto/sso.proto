@@ -15,6 +15,7 @@ service SSO {
     rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
     rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
     rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse) {}
+    rpc GetAllSessions(GetAllSessionsRequest) returns (GetAllSessionsResponse) {}
     rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
 }
 
@@ -74,6 +75,13 @@ message RemoveUserRequest {
 }
 message RemoveUserResponse {
     bool stat = 1;
+}
+
+message GetAllSessionsRequest {
+    string token = 1;
+}
+message GetAllSessionsResponse {
+    repeated string tokens = 1;
 }
 
 message UserSession {

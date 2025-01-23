@@ -19,15 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SSO_SignUp_FullMethodName        = "/sso.SSO/SignUp"
-	SSO_SignIn_FullMethodName        = "/sso.SSO/SignIn"
-	SSO_Check_FullMethodName         = "/sso.SSO/Check"
-	SSO_LogoutCurrent_FullMethodName = "/sso.SSO/LogoutCurrent"
-	SSO_LogoutAll_FullMethodName     = "/sso.SSO/LogoutAll"
-	SSO_LogoutSession_FullMethodName = "/sso.SSO/LogoutSession"
-	SSO_GetUser_FullMethodName       = "/sso.SSO/GetUser"
-	SSO_RemoveUser_FullMethodName    = "/sso.SSO/RemoveUser"
-	SSO_GetAllUsers_FullMethodName   = "/sso.SSO/GetAllUsers"
+	SSO_SignUp_FullMethodName         = "/sso.SSO/SignUp"
+	SSO_SignIn_FullMethodName         = "/sso.SSO/SignIn"
+	SSO_Check_FullMethodName          = "/sso.SSO/Check"
+	SSO_LogoutCurrent_FullMethodName  = "/sso.SSO/LogoutCurrent"
+	SSO_LogoutAll_FullMethodName      = "/sso.SSO/LogoutAll"
+	SSO_LogoutSession_FullMethodName  = "/sso.SSO/LogoutSession"
+	SSO_GetUser_FullMethodName        = "/sso.SSO/GetUser"
+	SSO_RemoveUser_FullMethodName     = "/sso.SSO/RemoveUser"
+	SSO_GetAllSessions_FullMethodName = "/sso.SSO/GetAllSessions"
+	SSO_GetAllUsers_FullMethodName    = "/sso.SSO/GetAllUsers"
 )
 
 // SSOClient is the client API for SSO service.
@@ -42,6 +43,7 @@ type SSOClient interface {
 	LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
 	RemoveUser(ctx context.Context, in *RemoveUserRequest, opts ...grpc.CallOption) (*RemoveUserResponse, error)
+	GetAllSessions(ctx context.Context, in *GetAllSessionsRequest, opts ...grpc.CallOption) (*GetAllSessionsResponse, error)
 	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 }
 
@@ -125,6 +127,15 @@ func (c *sSOClient) RemoveUser(ctx context.Context, in *RemoveUserRequest, opts 
 	return out, nil
 }
 
+func (c *sSOClient) GetAllSessions(ctx context.Context, in *GetAllSessionsRequest, opts ...grpc.CallOption) (*GetAllSessionsResponse, error) {
+	out := new(GetAllSessionsResponse)
+	err := c.cc.Invoke(ctx, SSO_GetAllSessions_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *sSOClient) GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error) {
 	out := new(GetAllUsersResponse)
 	err := c.cc.Invoke(ctx, SSO_GetAllUsers_FullMethodName, in, out, opts...)
@@ -146,6 +157,7 @@ type SSOServer interface {
 	LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error)
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
 	RemoveUser(context.Context, *RemoveUserRequest) (*RemoveUserResponse, error)
+	GetAllSessions(context.Context, *GetAllSessionsRequest) (*GetAllSessionsResponse, error)
 	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	mustEmbedUnimplementedSSOServer()
 }
@@ -177,6 +189,9 @@ func (UnimplementedSSOServer) GetUser(context.Context, *GetUserRequest) (*GetUse
 }
 func (UnimplementedSSOServer) RemoveUser(context.Context, *RemoveUserRequest) (*RemoveUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveUser not implemented")
+}
+func (UnimplementedSSOServer) GetAllSessions(context.Context, *GetAllSessionsRequest) (*GetAllSessionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllSessions not implemented")
 }
 func (UnimplementedSSOServer) GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllUsers not implemented")
@@ -338,6 +353,24 @@ func _SSO_RemoveUser_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SSO_GetAllSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).GetAllSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_GetAllSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).GetAllSessions(ctx, req.(*GetAllSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SSO_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAllUsersRequest)
 	if err := dec(in); err != nil {
@@ -394,6 +427,10 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveUser",
 			Handler:    _SSO_RemoveUser_Handler,
+		},
+		{
+			MethodName: "GetAllSessions",
+			Handler:    _SSO_GetAllSessions_Handler,
 		},
 		{
 			MethodName: "GetAllUsers",
