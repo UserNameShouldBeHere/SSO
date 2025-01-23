@@ -59,7 +59,7 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 	}
 
 	boolCmd := sessionStorage.rdb.SIsMember(ctx, email.(string), token)
-	if boolCmd.Err() != nil {
+	if err = boolCmd.Err(); err != nil {
 		return false, fmt.Errorf("%w (redis.Check): %w", customErrors.ErrUnauthenticated, err)
 	}
 
@@ -139,6 +139,15 @@ func (sessionStorage *SessionStorage) GetUserEmail(ctx context.Context, token st
 	}
 
 	return email.(string), nil
+}
+
+func (sessionStorage *SessionStorage) GetUserSessions(ctx context.Context, email string) ([]string, error) {
+	stringsCmd := sessionStorage.rdb.SMembers(ctx, email)
+	if err := stringsCmd.Err(); err != nil {
+		return nil, fmt.Errorf("%w (redis.GetUserSessions): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	return stringsCmd.Val(), nil
 }
 
 type myCustomClaims struct {

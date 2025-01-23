@@ -3,7 +3,8 @@ package errors
 import "errors"
 
 var (
-	ErrDoesNotExist = errors.New("doesn't exist")
+	ErrDoesNotExist      = errors.New("doesn't exist")
+	ErrPermissionsDenied = errors.New("permissions denied")
 
 	// postgres
 	ErrFailedToRollback     = errors.New("failed to rollback transaction")

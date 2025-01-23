@@ -15,6 +15,7 @@ service SSO {
     rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
     rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
     rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse) {}
+    rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
 }
 
 message SignUpRequest {
@@ -73,4 +74,20 @@ message RemoveUserRequest {
 }
 message RemoveUserResponse {
     bool stat = 1;
+}
+
+message UserSession {
+    string uuid = 1;
+    string name = 2;
+    string email = 3;
+    uint32 permissionsLevel = 4;
+    google.protobuf.Timestamp registeredAt = 5;
+    repeated string tokens = 6;
+}
+
+message GetAllUsersRequest {
+    string token = 1;
+}
+message GetAllUsersResponse {
+    repeated UserSession users = 1;
 }

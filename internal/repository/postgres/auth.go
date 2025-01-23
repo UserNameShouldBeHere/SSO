@@ -104,6 +104,53 @@ func (authStorage *AuthStorage) RemoveUser(ctx context.Context, email string) er
 	return nil
 }
 
+func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, email string) ([]domain.UserSession, error) {
+	var permissionsLevel uint32
+	err := authStorage.pool.QueryRow(ctx, `
+		select permissions_level
+		from users
+		where email = $1;
+	`, email).Scan(
+		&permissionsLevel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if permissionsLevel < 2 {
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrPermissionsDenied, err)
+	}
+
+	users := make([]domain.UserSession, 0)
+
+	rows, err := authStorage.pool.Query(ctx, `
+		select uuid, name, email, permissions_level, registered_at
+		from users
+		where permissions_level < $1;
+	`, permissionsLevel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return users, nil
+		}
+
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	for rows.Next() {
+		var user domain.UserSession
+		rows.Scan(&user.Uuid, &user.Name, &user.Email, &user.PermissionsLevel, &user.RegisteredAt)
+		users = append(users, user)
+	}
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	return users, nil
+}
+
 func (authStorage *AuthStorage) hasUser(ctx context.Context, email string) (bool, error) {
 	err := authStorage.pool.QueryRow(ctx, `
 		select

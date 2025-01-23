@@ -21,6 +21,7 @@ type AuthService interface {
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUser(ctx context.Context, token string) (domain.User, error)
 	RemoveUser(ctx context.Context, token string) error
+	GetUserSessions(ctx context.Context, token string) ([]domain.UserSession, error)
 }
 
 type SSOServer struct {
@@ -149,6 +150,30 @@ func (server *SSOServer) RemoveUser(ctx context.Context, req *sso.RemoveUserRequ
 
 	return &sso.RemoveUserResponse{
 		Stat: true,
+	}, nil
+}
+
+func (server *SSOServer) GetAllUsers(ctx context.Context, req *sso.GetAllUsersRequest) (resp *sso.GetAllUsersResponse, err error) {
+	users, err := server.authService.GetUserSessions(ctx, req.Token)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	userSessions := make([]*sso.UserSession, 0)
+
+	for _, user := range users {
+		userSessions = append(userSessions, &sso.UserSession{
+			Uuid:             user.Uuid,
+			Email:            user.Email,
+			Name:             user.Name,
+			PermissionsLevel: user.PermissionsLevel,
+			RegisteredAt:     convertTimeToProto(user.RegisteredAt),
+			Tokens:           user.Tokens,
+		})
+	}
+
+	return &sso.GetAllUsersResponse{
+		Users: userSessions,
 	}, nil
 }
 

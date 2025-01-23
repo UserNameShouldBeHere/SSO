@@ -19,6 +19,7 @@ type AuthStorage interface {
 	GetPassword(ctx context.Context, email string) (string, error)
 	GetUser(ctx context.Context, email string) (domain.User, error)
 	RemoveUser(ctx context.Context, email string) error
+	GetAllUsers(ctx context.Context, email string) ([]domain.UserSession, error)
 }
 
 type SessionStorage interface {
@@ -28,6 +29,7 @@ type SessionStorage interface {
 	LogoutAll(ctx context.Context, token string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUserEmail(ctx context.Context, token string) (string, error)
+	GetUserSessions(ctx context.Context, email string) ([]string, error)
 }
 
 type AuthService struct {
@@ -197,6 +199,32 @@ func (authService *AuthService) RemoveUser(ctx context.Context, token string) er
 	}
 
 	return nil
+}
+
+func (authService *AuthService) GetUserSessions(ctx context.Context, token string) ([]domain.UserSession, error) {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.GetUserSessions): %w", err)
+		return nil, err
+	}
+
+	users, err := authService.authStorage.GetAllUsers(ctx, email)
+	if err != nil {
+		authService.logger.Errorf("failed to get all users (service.GetUserSessions): %w", err)
+		return nil, err
+	}
+
+	for i, user := range users {
+		tokens, err := authService.sessionStorage.GetUserSessions(ctx, user.Email)
+		if err != nil {
+			authService.logger.Errorf("failed to get user sessions (service.GetUserSessions): %w", err)
+			return nil, err
+		}
+
+		users[i].Tokens = tokens
+	}
+
+	return users, nil
 }
 
 func hashPassword(password string, salt []byte) ([]byte, error) {
