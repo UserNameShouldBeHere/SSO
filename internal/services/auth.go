@@ -18,6 +18,7 @@ type AuthStorage interface {
 	CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) error
 	GetPassword(ctx context.Context, email string) (string, error)
 	GetUser(ctx context.Context, email string) (domain.User, error)
+	RemoveUser(ctx context.Context, email string) error
 }
 
 type SessionStorage interface {
@@ -174,6 +175,28 @@ func (authService *AuthService) GetUser(ctx context.Context, token string) (doma
 	}
 
 	return user, nil
+}
+
+func (authService *AuthService) RemoveUser(ctx context.Context, token string) error {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.RemoveUser): %w", err)
+		return err
+	}
+
+	err = authService.sessionStorage.LogoutAll(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.RemoveUser): %w", err)
+		return err
+	}
+
+	err = authService.authStorage.RemoveUser(ctx, email)
+	if err != nil {
+		authService.logger.Errorf("failed to remove user (service.RemoveUser): %w", err)
+		return err
+	}
+
+	return nil
 }
 
 func hashPassword(password string, salt []byte) ([]byte, error) {

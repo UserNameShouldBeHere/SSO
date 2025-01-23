@@ -20,6 +20,7 @@ type AuthService interface {
 	LogoutAll(ctx context.Context, token string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUser(ctx context.Context, token string) (domain.User, error)
+	RemoveUser(ctx context.Context, token string) error
 }
 
 type SSOServer struct {
@@ -137,6 +138,17 @@ func (server *SSOServer) GetUser(ctx context.Context, req *sso.GetUserRequest) (
 			PermissionsLevel: user.PermissionsLevel,
 			RegisteredAt:     convertTimeToProto(user.RegisteredAt),
 		},
+	}, nil
+}
+
+func (server *SSOServer) RemoveUser(ctx context.Context, req *sso.RemoveUserRequest) (resp *sso.RemoveUserResponse, err error) {
+	err = server.authService.RemoveUser(ctx, req.Token)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.RemoveUserResponse{
+		Stat: true,
 	}, nil
 }
 

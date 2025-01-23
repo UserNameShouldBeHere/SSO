@@ -26,6 +26,7 @@ const (
 	SSO_LogoutAll_FullMethodName     = "/sso.SSO/LogoutAll"
 	SSO_LogoutSession_FullMethodName = "/sso.SSO/LogoutSession"
 	SSO_GetUser_FullMethodName       = "/sso.SSO/GetUser"
+	SSO_RemoveUser_FullMethodName    = "/sso.SSO/RemoveUser"
 )
 
 // SSOClient is the client API for SSO service.
@@ -39,6 +40,7 @@ type SSOClient interface {
 	LogoutAll(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
+	RemoveUser(ctx context.Context, in *RemoveUserRequest, opts ...grpc.CallOption) (*RemoveUserResponse, error)
 }
 
 type sSOClient struct {
@@ -112,6 +114,15 @@ func (c *sSOClient) GetUser(ctx context.Context, in *GetUserRequest, opts ...grp
 	return out, nil
 }
 
+func (c *sSOClient) RemoveUser(ctx context.Context, in *RemoveUserRequest, opts ...grpc.CallOption) (*RemoveUserResponse, error) {
+	out := new(RemoveUserResponse)
+	err := c.cc.Invoke(ctx, SSO_RemoveUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SSOServer is the server API for SSO service.
 // All implementations must embed UnimplementedSSOServer
 // for forward compatibility
@@ -123,6 +134,7 @@ type SSOServer interface {
 	LogoutAll(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error)
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
+	RemoveUser(context.Context, *RemoveUserRequest) (*RemoveUserResponse, error)
 	mustEmbedUnimplementedSSOServer()
 }
 
@@ -150,6 +162,9 @@ func (UnimplementedSSOServer) LogoutSession(context.Context, *LogoutSessionReque
 }
 func (UnimplementedSSOServer) GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
+}
+func (UnimplementedSSOServer) RemoveUser(context.Context, *RemoveUserRequest) (*RemoveUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveUser not implemented")
 }
 func (UnimplementedSSOServer) mustEmbedUnimplementedSSOServer() {}
 
@@ -290,6 +305,24 @@ func _SSO_GetUser_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SSO_RemoveUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).RemoveUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_RemoveUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).RemoveUser(ctx, req.(*RemoveUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SSO_ServiceDesc is the grpc.ServiceDesc for SSO service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -324,6 +357,10 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUser",
 			Handler:    _SSO_GetUser_Handler,
+		},
+		{
+			MethodName: "RemoveUser",
+			Handler:    _SSO_RemoveUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
