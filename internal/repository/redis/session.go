@@ -166,3 +166,28 @@ func (sessionStorage *SessionStorage) getTokenClaims(token string) (*jwt.MapClai
 
 	return &claims, nil
 }
+
+func (sessionStorage *SessionStorage) FlushExpiredSessions(ctx context.Context) error {
+	stringsCmd := sessionStorage.rdb.Keys(ctx, "*")
+	if err := stringsCmd.Err(); err != nil {
+		return fmt.Errorf("%w (redis.flushExpiredUserSessions): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	for _, user := range stringsCmd.Val() {
+		stringsCmd = sessionStorage.rdb.SMembers(ctx, user)
+		if err := stringsCmd.Err(); err != nil {
+			return fmt.Errorf("%w (redis.flushExpiredUserSessions): %w", customErrors.ErrFailedToExecuteMethod, err)
+		}
+
+		for _, token := range stringsCmd.Val() {
+			if _, err := sessionStorage.getTokenClaims(token); err != nil {
+				err = sessionStorage.rdb.SRem(ctx, user, token).Err()
+				if err != nil {
+					return fmt.Errorf("%w (redis.flushExpiredUserSessions): %w", customErrors.ErrFailedToExecuteMethod, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}

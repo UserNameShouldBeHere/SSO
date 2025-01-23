@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/argon2"
@@ -30,6 +31,7 @@ type SessionStorage interface {
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUserEmail(ctx context.Context, token string) (string, error)
 	GetUserSessions(ctx context.Context, email string) ([]string, error)
+	FlushExpiredSessions(ctx context.Context) error
 }
 
 type AuthService struct {
@@ -41,6 +43,17 @@ type AuthService struct {
 
 func NewAuthService(
 	authStorage AuthStorage, sessionStorage SessionStorage, logger *zap.SugaredLogger) (*AuthService, error) {
+
+	go func() {
+		for {
+			err := sessionStorage.FlushExpiredSessions(context.Background())
+			if err != nil {
+				logger.Errorf("failed to flush expired sessions (service.NewAuthService): %w", err)
+			}
+
+			time.Sleep(time.Minute * 10)
+		}
+	}()
 
 	return &AuthService{
 		authStorage:    authStorage,
