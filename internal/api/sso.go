@@ -20,8 +20,9 @@ type AuthService interface {
 	LogoutAll(ctx context.Context, token string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUser(ctx context.Context, token string) (domain.User, error)
-	RemoveUser(ctx context.Context, token string) error
+	RemoveCurrentUser(ctx context.Context, token string) error
 	GetAllSessions(ctx context.Context, token string) ([]string, error)
+	UpdateUserName(ctx context.Context, token string, newName string) error
 	GetUsersSessions(ctx context.Context, token string) ([]domain.UserSession, error)
 }
 
@@ -77,7 +78,7 @@ func (server *SSOServer) SignIn(ctx context.Context, req *sso.SignInRequest) (re
 	}, nil
 }
 
-func (server *SSOServer) Check(ctx context.Context, req *sso.CheckRequest) (resp *sso.CheckResponse, err error) {
+func (server *SSOServer) Check(ctx context.Context, req *sso.TokenRequest) (resp *sso.CheckResponse, err error) {
 	if len(req.Token) == 0 {
 		return nil, status.Error(customErrors.GetGrpcStatus(customErrors.ErrDataNotValid), "incorrect token")
 	}
@@ -90,7 +91,7 @@ func (server *SSOServer) Check(ctx context.Context, req *sso.CheckRequest) (resp
 }
 
 func (server *SSOServer) LogoutCurrent(
-	ctx context.Context, req *sso.LogoutRequest) (resp *sso.LogoutResponse, err error) {
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.LogoutResponse, err error) {
 
 	err = server.authService.LogoutCurrent(ctx, req.Token)
 	if err != nil {
@@ -102,7 +103,7 @@ func (server *SSOServer) LogoutCurrent(
 	}, nil
 }
 
-func (server *SSOServer) LogoutAll(ctx context.Context, req *sso.LogoutRequest) (resp *sso.LogoutResponse, err error) {
+func (server *SSOServer) LogoutAll(ctx context.Context, req *sso.TokenRequest) (resp *sso.LogoutResponse, err error) {
 	err = server.authService.LogoutAll(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
@@ -126,7 +127,7 @@ func (server *SSOServer) LogoutSession(
 	}, nil
 }
 
-func (server *SSOServer) GetUser(ctx context.Context, req *sso.GetUserRequest) (resp *sso.GetUserResponse, err error) {
+func (server *SSOServer) GetUser(ctx context.Context, req *sso.TokenRequest) (resp *sso.GetUserResponse, err error) {
 	user, err := server.authService.GetUser(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
@@ -143,21 +144,21 @@ func (server *SSOServer) GetUser(ctx context.Context, req *sso.GetUserRequest) (
 	}, nil
 }
 
-func (server *SSOServer) RemoveUser(
-	ctx context.Context, req *sso.RemoveUserRequest) (resp *sso.RemoveUserResponse, err error) {
+func (server *SSOServer) RemoveCurrentUser(
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.RemoveCurrentUserResponse, err error) {
 
-	err = server.authService.RemoveUser(ctx, req.Token)
+	err = server.authService.RemoveCurrentUser(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.RemoveUserResponse{
+	return &sso.RemoveCurrentUserResponse{
 		Stat: true,
 	}, nil
 }
 
 func (server *SSOServer) GetAllSessions(
-	ctx context.Context, req *sso.GetAllSessionsRequest) (resp *sso.GetAllSessionsResponse, err error) {
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.GetAllSessionsResponse, err error) {
 
 	tokens, err := server.authService.GetAllSessions(ctx, req.Token)
 	if err != nil {
@@ -169,8 +170,21 @@ func (server *SSOServer) GetAllSessions(
 	}, nil
 }
 
+func (server *SSOServer) UpdateUserName(
+	ctx context.Context, req *sso.UpdateUserNameRequest) (resp *sso.UpdateUserNameResponse, err error) {
+
+	err = server.authService.UpdateUserName(ctx, req.Token, req.NewName)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.UpdateUserNameResponse{
+		Stat: true,
+	}, nil
+}
+
 func (server *SSOServer) GetAllUsers(
-	ctx context.Context, req *sso.GetAllUsersRequest) (resp *sso.GetAllUsersResponse, err error) {
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.GetAllUsersResponse, err error) {
 
 	users, err := server.authService.GetUsersSessions(ctx, req.Token)
 	if err != nil {

@@ -93,12 +93,23 @@ func (authStorage *AuthStorage) GetUser(ctx context.Context, email string) (doma
 	return user, nil
 }
 
-func (authStorage *AuthStorage) RemoveUser(ctx context.Context, email string) error {
+func (authStorage *AuthStorage) RemoveCurrentUser(ctx context.Context, email string) error {
 	_, err := authStorage.pool.Exec(ctx, `
 		delete from users where email = $1;
 	`, email)
 	if err != nil {
-		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+		return fmt.Errorf("%w (postgres.RemoveCurrentUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	return nil
+}
+
+func (authStorage *AuthStorage) UpdateUserName(ctx context.Context, email string, newName string) error {
+	_, err := authStorage.pool.Exec(ctx, `
+		update users set name = $1 where email = $2;
+	`, newName, email)
+	if err != nil {
+		return fmt.Errorf("%w (postgres.UpdateUserName): %w", customErrors.ErrFailedToExecuteQuery, err)
 	}
 
 	return nil

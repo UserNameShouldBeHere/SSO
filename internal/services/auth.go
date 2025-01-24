@@ -19,7 +19,8 @@ type AuthStorage interface {
 	CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) error
 	GetPassword(ctx context.Context, email string) (string, error)
 	GetUser(ctx context.Context, email string) (domain.User, error)
-	RemoveUser(ctx context.Context, email string) error
+	RemoveCurrentUser(ctx context.Context, email string) error
+	UpdateUserName(ctx context.Context, email string, newName string) error
 	GetAllUsers(ctx context.Context, email string) ([]domain.UserSession, error)
 }
 
@@ -192,22 +193,22 @@ func (authService *AuthService) GetUser(ctx context.Context, token string) (doma
 	return user, nil
 }
 
-func (authService *AuthService) RemoveUser(ctx context.Context, token string) error {
+func (authService *AuthService) RemoveCurrentUser(ctx context.Context, token string) error {
 	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
 	if err != nil {
-		authService.logger.Errorf("failed to get user email (service.RemoveUser): %w", err)
+		authService.logger.Errorf("failed to get user email (service.RemoveCurrentUser): %w", err)
 		return err
 	}
 
 	err = authService.sessionStorage.LogoutAll(ctx, token)
 	if err != nil {
-		authService.logger.Errorf("failed to logout session (service.RemoveUser): %w", err)
+		authService.logger.Errorf("failed to logout session (service.RemoveCurrentUser): %w", err)
 		return err
 	}
 
-	err = authService.authStorage.RemoveUser(ctx, email)
+	err = authService.authStorage.RemoveCurrentUser(ctx, email)
 	if err != nil {
-		authService.logger.Errorf("failed to remove user (service.RemoveUser): %w", err)
+		authService.logger.Errorf("failed to remove user (service.RemoveCurrentUser): %w", err)
 		return err
 	}
 
@@ -228,6 +229,22 @@ func (authService *AuthService) GetAllSessions(ctx context.Context, token string
 	}
 
 	return tokens, nil
+}
+
+func (authService *AuthService) UpdateUserName(ctx context.Context, token string, newName string) error {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.UpdateUserName): %w", err)
+		return err
+	}
+
+	err = authService.authStorage.UpdateUserName(ctx, email, newName)
+	if err != nil {
+		authService.logger.Errorf("failed to get all users (service.UpdateUserName): %w", err)
+		return err
+	}
+
+	return nil
 }
 
 func (authService *AuthService) GetUsersSessions(ctx context.Context, token string) ([]domain.UserSession, error) {

@@ -9,14 +9,15 @@ option go_package = "./sso";
 service SSO {
     rpc SignUp(SignUpRequest) returns (SignUpResponse) {}
     rpc SignIn(SignInRequest) returns (SignInResponse) {}
-    rpc Check(CheckRequest) returns (CheckResponse) {}
-    rpc LogoutCurrent(LogoutRequest) returns (LogoutResponse) {}
-    rpc LogoutAll(LogoutRequest) returns (LogoutResponse) {}
+    rpc Check(TokenRequest) returns (CheckResponse) {}
+    rpc LogoutCurrent(TokenRequest) returns (LogoutResponse) {}
+    rpc LogoutAll(TokenRequest) returns (LogoutResponse) {}
     rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
-    rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
-    rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse) {}
-    rpc GetAllSessions(GetAllSessionsRequest) returns (GetAllSessionsResponse) {}
-    rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse) {}
+    rpc GetUser(TokenRequest) returns (GetUserResponse) {}
+    rpc RemoveCurrentUser(TokenRequest) returns (RemoveCurrentUserResponse) {}
+    rpc GetAllSessions(TokenRequest) returns (GetAllSessionsResponse) {}
+    rpc UpdateUserName(UpdateUserNameRequest) returns (UpdateUserNameResponse) {}
+    rpc GetAllUsers(TokenRequest) returns (GetAllUsersResponse) {}
 }
 
 message SignUpRequest {
@@ -36,16 +37,14 @@ message SignInResponse {
     string token = 1;
 }
 
-message CheckRequest {
+message TokenRequest {
     string token = 1;
 }
+
 message CheckResponse {
     bool stat = 1;
 }
 
-message LogoutRequest {
-    string token = 1;
-}
 message LogoutResponse {
     bool stat = 1;
 }
@@ -63,25 +62,24 @@ message User {
     google.protobuf.Timestamp registeredAt = 5;
 }
 
-message GetUserRequest {
-    string token = 1;
-}
 message GetUserResponse {
     User user = 1;
 }
 
-message RemoveUserRequest {
-    string token = 1;
-}
-message RemoveUserResponse {
+message RemoveCurrentUserResponse {
     bool stat = 1;
 }
 
-message GetAllSessionsRequest {
-    string token = 1;
-}
 message GetAllSessionsResponse {
     repeated string tokens = 1;
+}
+
+message UpdateUserNameRequest {
+    string token = 1;
+    string newName = 2;
+}
+message UpdateUserNameResponse {
+    bool stat = 1;
 }
 
 message UserSession {
@@ -93,9 +91,6 @@ message UserSession {
     repeated string tokens = 6;
 }
 
-message GetAllUsersRequest {
-    string token = 1;
-}
 message GetAllUsersResponse {
     repeated UserSession users = 1;
 }
