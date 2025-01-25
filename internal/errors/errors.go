@@ -28,6 +28,9 @@ func GetGrpcStatus(err error) codes.Code {
 		errors.Is(err, ErrFailedToCreateToken),
 		errors.Is(err, ErrFailedToExecuteMethod),
 		errors.Is(err, ErrFailedToGenJWTKey),
+		errors.Is(err, ErrFailedToBeginTx),
+		errors.Is(err, ErrFailedToRollbackTx),
+		errors.Is(err, ErrFailedToCommitTx),
 		errors.Is(err, ErrInternal):
 		return codes.Internal
 	case errors.Is(err, ErrUnauthenticated),

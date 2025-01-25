@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -115,14 +116,28 @@ func (authStorage *AuthStorage) UpdateUserName(ctx context.Context, email string
 	return nil
 }
 
-func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, email string) ([]domain.UserSession, error) {
-	var permissionsLevel uint32
-	err := authStorage.pool.QueryRow(ctx, `
-		select permissions_level
-		from users
-		where email = $1;
-	`, email).Scan(
-		&permissionsLevel)
+func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, dispatcherEmail string) ([]domain.UserSession, error) {
+	tx, err := authStorage.pool.BeginTx(context.Background(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToBeginTx, err)
+	}
+	defer func() {
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			fmt.Printf("%v (postgres.GetAllUsers): %v", customErrors.ErrFailedToRollbackTx, err)
+		}
+	}()
+
+	var (
+		permissionsLevel uint32
+		plist            []string
+	)
+	err = tx.QueryRow(ctx, `
+		select u.permissions_level, p.plist
+		from users u, permission p
+		where u.permissions_level = p.level and u.email = $1;
+	`, dispatcherEmail).Scan(
+		&permissionsLevel, &plist)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrDoesNotExist, err)
@@ -131,13 +146,13 @@ func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, email string) (
 		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
 	}
 
-	if permissionsLevel < 2 {
-		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrPermissionsDenied, err)
+	if !slices.Contains(plist, "user:getall") {
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers)", customErrors.ErrPermissionsDenied)
 	}
 
 	users := make([]domain.UserSession, 0)
 
-	rows, err := authStorage.pool.Query(ctx, `
+	rows, err := tx.Query(ctx, `
 		select uuid, name, email, permissions_level, registered_at
 		from users
 		where permissions_level < $1;
@@ -160,11 +175,223 @@ func (authStorage *AuthStorage) GetAllUsers(ctx context.Context, email string) (
 
 		users = append(users, user)
 	}
-	if rows.Err() != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
 	}
 
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("%w (postgres.GetAllUsers): %w", customErrors.ErrFailedToCommitTx, err)
+	}
+
 	return users, nil
+}
+
+func (authStorage *AuthStorage) RemoveUser(ctx context.Context, dispatcherEmail string, targetEmail string) error {
+	tx, err := authStorage.pool.BeginTx(context.Background(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToBeginTx, err)
+	}
+	defer func() {
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			fmt.Printf("%v (postgres.RemoveUser): %v", customErrors.ErrFailedToRollbackTx, err)
+		}
+	}()
+
+	var (
+		dispatcherPermissions uint32
+		plist                 []string
+	)
+	err = tx.QueryRow(ctx, `
+		select u.permissions_level, p.plist
+		from users u, permission p
+		where u.permissions_level = p.level and u.email = $1;
+	`, dispatcherEmail).Scan(
+		&dispatcherPermissions,
+		&plist)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if !slices.Contains(plist, "user:remove") {
+		return fmt.Errorf("%w (postgres.RemoveUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	var targetPermissions uint32
+	err = tx.QueryRow(ctx, `
+		select permissions_level
+		from users
+		where email = $1;
+	`, targetEmail).Scan(
+		&targetPermissions)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if targetPermissions >= dispatcherPermissions {
+		return fmt.Errorf("%w (postgres.RemoveUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	_, err = tx.Exec(ctx, `
+		delete from users where email = $1;
+	`, targetEmail)
+	if err != nil {
+		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return fmt.Errorf("%w (postgres.RemoveUser): %w", customErrors.ErrFailedToCommitTx, err)
+	}
+
+	return nil
+}
+
+func (authStorage *AuthStorage) BanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error {
+	tx, err := authStorage.pool.BeginTx(context.Background(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrFailedToBeginTx, err)
+	}
+	defer func() {
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			fmt.Printf("%v (postgres.BanUser): %v", customErrors.ErrFailedToRollbackTx, err)
+		}
+	}()
+
+	var (
+		dispatcherPermissions uint32
+		plist                 []string
+	)
+	err = tx.QueryRow(ctx, `
+		select u.permissions_level, p.plist
+		from users u, permission p
+		where u.permissions_level = p.level and u.email = $1;
+	`, dispatcherEmail).Scan(
+		&dispatcherPermissions,
+		&plist)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if !slices.Contains(plist, "user:ban") {
+		return fmt.Errorf("%w (postgres.BanUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	var targetPermissions uint32
+	err = tx.QueryRow(ctx, `
+		select permissions_level
+		from users
+		where email = $1;
+	`, targetEmail).Scan(
+		&targetPermissions)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if targetPermissions >= dispatcherPermissions {
+		return fmt.Errorf("%w (postgres.BanUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	_, err = tx.Exec(ctx, `
+		update users set permissions_level = 0 where email = $1;
+	`, targetEmail)
+	if err != nil {
+		return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return fmt.Errorf("%w (postgres.BanUser): %w", customErrors.ErrFailedToCommitTx, err)
+	}
+
+	return nil
+}
+
+func (authStorage *AuthStorage) UnBanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error {
+	tx, err := authStorage.pool.BeginTx(context.Background(), pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToBeginTx, err)
+	}
+	defer func() {
+		err = tx.Rollback(context.Background())
+		if err != nil {
+			fmt.Printf("%v (postgres.UnBanUser): %v", customErrors.ErrFailedToRollbackTx, err)
+		}
+	}()
+
+	var (
+		dispatcherPermissions uint32
+		plist                 []string
+	)
+	err = tx.QueryRow(ctx, `
+		select u.permissions_level, p.plist
+		from users u, permission p
+		where u.permissions_level = p.level and u.email = $1;
+	`, dispatcherEmail).Scan(
+		&dispatcherPermissions,
+		&plist)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if !slices.Contains(plist, "user:unban") {
+		return fmt.Errorf("%w (postgres.UnBanUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	var targetPermissions uint32
+	err = tx.QueryRow(ctx, `
+		select permissions_level
+		from users
+		where email = $1;
+	`, targetEmail).Scan(
+		&targetPermissions)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	if targetPermissions >= dispatcherPermissions {
+		return fmt.Errorf("%w (postgres.UnBanUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	_, err = tx.Exec(ctx, `
+		update users set permissions_level = 1 where email = $1;
+	`, targetEmail)
+	if err != nil {
+		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToCommitTx, err)
+	}
+
+	return nil
 }
 
 func (authStorage *AuthStorage) hasUser(ctx context.Context, email string) (bool, error) {

@@ -88,6 +88,15 @@ func (sessionStorage *SessionStorage) LogoutAll(ctx context.Context, token strin
 	return nil
 }
 
+func (sessionStorage *SessionStorage) LogoutAllByEmail(ctx context.Context, email string) error {
+	err := sessionStorage.rdb.Del(ctx, email).Err()
+	if err != nil {
+		return fmt.Errorf("%w (redis.LogoutAllByEmail): %w", customErrors.ErrFailedToExecuteMethod, err)
+	}
+
+	return nil
+}
+
 func (sessionStorage *SessionStorage) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
 	email, err := sessionStorage.GetUserEmail(ctx, token)
 	if err != nil {

@@ -30,6 +30,9 @@ const (
 	SSO_GetAllSessions_FullMethodName    = "/sso.SSO/GetAllSessions"
 	SSO_UpdateUserName_FullMethodName    = "/sso.SSO/UpdateUserName"
 	SSO_GetAllUsers_FullMethodName       = "/sso.SSO/GetAllUsers"
+	SSO_RemoveUser_FullMethodName        = "/sso.SSO/RemoveUser"
+	SSO_BanUser_FullMethodName           = "/sso.SSO/BanUser"
+	SSO_UnBanUser_FullMethodName         = "/sso.SSO/UnBanUser"
 )
 
 // SSOClient is the client API for SSO service.
@@ -38,15 +41,18 @@ const (
 type SSOClient interface {
 	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 	SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
-	Check(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*CheckResponse, error)
-	LogoutCurrent(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
-	LogoutAll(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
-	LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
+	Check(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	LogoutCurrent(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	LogoutAll(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	GetUser(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
-	RemoveCurrentUser(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*RemoveCurrentUserResponse, error)
+	RemoveCurrentUser(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	GetAllSessions(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*GetAllSessionsResponse, error)
-	UpdateUserName(ctx context.Context, in *UpdateUserNameRequest, opts ...grpc.CallOption) (*UpdateUserNameResponse, error)
+	UpdateUserName(ctx context.Context, in *UpdateUserNameRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	GetAllUsers(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
+	RemoveUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	BanUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	UnBanUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 }
 
 type sSOClient struct {
@@ -75,8 +81,8 @@ func (c *sSOClient) SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *sSOClient) Check(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*CheckResponse, error) {
-	out := new(CheckResponse)
+func (c *sSOClient) Check(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_Check_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -84,8 +90,8 @@ func (c *sSOClient) Check(ctx context.Context, in *TokenRequest, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *sSOClient) LogoutCurrent(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
-	out := new(LogoutResponse)
+func (c *sSOClient) LogoutCurrent(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_LogoutCurrent_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -93,8 +99,8 @@ func (c *sSOClient) LogoutCurrent(ctx context.Context, in *TokenRequest, opts ..
 	return out, nil
 }
 
-func (c *sSOClient) LogoutAll(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
-	out := new(LogoutResponse)
+func (c *sSOClient) LogoutAll(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_LogoutAll_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -102,8 +108,8 @@ func (c *sSOClient) LogoutAll(ctx context.Context, in *TokenRequest, opts ...grp
 	return out, nil
 }
 
-func (c *sSOClient) LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
-	out := new(LogoutResponse)
+func (c *sSOClient) LogoutSession(ctx context.Context, in *LogoutSessionRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_LogoutSession_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -120,8 +126,8 @@ func (c *sSOClient) GetUser(ctx context.Context, in *TokenRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *sSOClient) RemoveCurrentUser(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*RemoveCurrentUserResponse, error) {
-	out := new(RemoveCurrentUserResponse)
+func (c *sSOClient) RemoveCurrentUser(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_RemoveCurrentUser_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -138,8 +144,8 @@ func (c *sSOClient) GetAllSessions(ctx context.Context, in *TokenRequest, opts .
 	return out, nil
 }
 
-func (c *sSOClient) UpdateUserName(ctx context.Context, in *UpdateUserNameRequest, opts ...grpc.CallOption) (*UpdateUserNameResponse, error) {
-	out := new(UpdateUserNameResponse)
+func (c *sSOClient) UpdateUserName(ctx context.Context, in *UpdateUserNameRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, SSO_UpdateUserName_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -156,21 +162,51 @@ func (c *sSOClient) GetAllUsers(ctx context.Context, in *TokenRequest, opts ...g
 	return out, nil
 }
 
+func (c *sSOClient) RemoveUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, SSO_RemoveUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) BanUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, SSO_BanUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sSOClient) UnBanUser(ctx context.Context, in *TargetRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, SSO_UnBanUser_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SSOServer is the server API for SSO service.
 // All implementations must embed UnimplementedSSOServer
 // for forward compatibility
 type SSOServer interface {
 	SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error)
 	SignIn(context.Context, *SignInRequest) (*SignInResponse, error)
-	Check(context.Context, *TokenRequest) (*CheckResponse, error)
-	LogoutCurrent(context.Context, *TokenRequest) (*LogoutResponse, error)
-	LogoutAll(context.Context, *TokenRequest) (*LogoutResponse, error)
-	LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error)
+	Check(context.Context, *TokenRequest) (*StatusResponse, error)
+	LogoutCurrent(context.Context, *TokenRequest) (*StatusResponse, error)
+	LogoutAll(context.Context, *TokenRequest) (*StatusResponse, error)
+	LogoutSession(context.Context, *LogoutSessionRequest) (*StatusResponse, error)
 	GetUser(context.Context, *TokenRequest) (*GetUserResponse, error)
-	RemoveCurrentUser(context.Context, *TokenRequest) (*RemoveCurrentUserResponse, error)
+	RemoveCurrentUser(context.Context, *TokenRequest) (*StatusResponse, error)
 	GetAllSessions(context.Context, *TokenRequest) (*GetAllSessionsResponse, error)
-	UpdateUserName(context.Context, *UpdateUserNameRequest) (*UpdateUserNameResponse, error)
+	UpdateUserName(context.Context, *UpdateUserNameRequest) (*StatusResponse, error)
 	GetAllUsers(context.Context, *TokenRequest) (*GetAllUsersResponse, error)
+	RemoveUser(context.Context, *TargetRequest) (*StatusResponse, error)
+	BanUser(context.Context, *TargetRequest) (*StatusResponse, error)
+	UnBanUser(context.Context, *TargetRequest) (*StatusResponse, error)
 	mustEmbedUnimplementedSSOServer()
 }
 
@@ -184,32 +220,41 @@ func (UnimplementedSSOServer) SignUp(context.Context, *SignUpRequest) (*SignUpRe
 func (UnimplementedSSOServer) SignIn(context.Context, *SignInRequest) (*SignInResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
 }
-func (UnimplementedSSOServer) Check(context.Context, *TokenRequest) (*CheckResponse, error) {
+func (UnimplementedSSOServer) Check(context.Context, *TokenRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
-func (UnimplementedSSOServer) LogoutCurrent(context.Context, *TokenRequest) (*LogoutResponse, error) {
+func (UnimplementedSSOServer) LogoutCurrent(context.Context, *TokenRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LogoutCurrent not implemented")
 }
-func (UnimplementedSSOServer) LogoutAll(context.Context, *TokenRequest) (*LogoutResponse, error) {
+func (UnimplementedSSOServer) LogoutAll(context.Context, *TokenRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LogoutAll not implemented")
 }
-func (UnimplementedSSOServer) LogoutSession(context.Context, *LogoutSessionRequest) (*LogoutResponse, error) {
+func (UnimplementedSSOServer) LogoutSession(context.Context, *LogoutSessionRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LogoutSession not implemented")
 }
 func (UnimplementedSSOServer) GetUser(context.Context, *TokenRequest) (*GetUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
 }
-func (UnimplementedSSOServer) RemoveCurrentUser(context.Context, *TokenRequest) (*RemoveCurrentUserResponse, error) {
+func (UnimplementedSSOServer) RemoveCurrentUser(context.Context, *TokenRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveCurrentUser not implemented")
 }
 func (UnimplementedSSOServer) GetAllSessions(context.Context, *TokenRequest) (*GetAllSessionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllSessions not implemented")
 }
-func (UnimplementedSSOServer) UpdateUserName(context.Context, *UpdateUserNameRequest) (*UpdateUserNameResponse, error) {
+func (UnimplementedSSOServer) UpdateUserName(context.Context, *UpdateUserNameRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserName not implemented")
 }
 func (UnimplementedSSOServer) GetAllUsers(context.Context, *TokenRequest) (*GetAllUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllUsers not implemented")
+}
+func (UnimplementedSSOServer) RemoveUser(context.Context, *TargetRequest) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveUser not implemented")
+}
+func (UnimplementedSSOServer) BanUser(context.Context, *TargetRequest) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedSSOServer) UnBanUser(context.Context, *TargetRequest) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnBanUser not implemented")
 }
 func (UnimplementedSSOServer) mustEmbedUnimplementedSSOServer() {}
 
@@ -422,6 +467,60 @@ func _SSO_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SSO_RemoveUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).RemoveUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_RemoveUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).RemoveUser(ctx, req.(*TargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).BanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_BanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).BanUser(ctx, req.(*TargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SSO_UnBanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SSOServer).UnBanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SSO_UnBanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SSOServer).UnBanUser(ctx, req.(*TargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SSO_ServiceDesc is the grpc.ServiceDesc for SSO service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -472,6 +571,18 @@ var SSO_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAllUsers",
 			Handler:    _SSO_GetAllUsers_Handler,
+		},
+		{
+			MethodName: "RemoveUser",
+			Handler:    _SSO_RemoveUser_Handler,
+		},
+		{
+			MethodName: "BanUser",
+			Handler:    _SSO_BanUser_Handler,
+		},
+		{
+			MethodName: "UnBanUser",
+			Handler:    _SSO_UnBanUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

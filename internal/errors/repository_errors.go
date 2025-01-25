@@ -10,6 +10,9 @@ var (
 	ErrFailedToRollback     = errors.New("failed to rollback transaction")
 	ErrFailedToExecuteQuery = errors.New("failed to execute query")
 	ErrAlreadyExists        = errors.New("already exists")
+	ErrFailedToBeginTx      = errors.New("failed to begin transaction")
+	ErrFailedToRollbackTx   = errors.New("failed to rollback transaction")
+	ErrFailedToCommitTx     = errors.New("failed to commit transaction")
 
 	// redis
 	ErrFailedToCreateToken   = errors.New("failed to create token")

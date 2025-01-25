@@ -24,6 +24,9 @@ type AuthService interface {
 	GetAllSessions(ctx context.Context, token string) ([]string, error)
 	UpdateUserName(ctx context.Context, token string, newName string) error
 	GetUsersSessions(ctx context.Context, token string) ([]domain.UserSession, error)
+	RemoveUser(ctx context.Context, token string, targetEmail string) error
+	BanUser(ctx context.Context, token string, targetEmail string) error
+	UnBanUser(ctx context.Context, token string, targetEmail string) error
 }
 
 type SSOServer struct {
@@ -78,51 +81,51 @@ func (server *SSOServer) SignIn(ctx context.Context, req *sso.SignInRequest) (re
 	}, nil
 }
 
-func (server *SSOServer) Check(ctx context.Context, req *sso.TokenRequest) (resp *sso.CheckResponse, err error) {
+func (server *SSOServer) Check(ctx context.Context, req *sso.TokenRequest) (resp *sso.StatusResponse, err error) {
 	if len(req.Token) == 0 {
 		return nil, status.Error(customErrors.GetGrpcStatus(customErrors.ErrDataNotValid), "incorrect token")
 	}
 
 	stat := server.authService.Check(ctx, req.Token)
 
-	return &sso.CheckResponse{
+	return &sso.StatusResponse{
 		Stat: stat,
 	}, nil
 }
 
 func (server *SSOServer) LogoutCurrent(
-	ctx context.Context, req *sso.TokenRequest) (resp *sso.LogoutResponse, err error) {
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.StatusResponse, err error) {
 
 	err = server.authService.LogoutCurrent(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.LogoutResponse{
+	return &sso.StatusResponse{
 		Stat: true,
 	}, nil
 }
 
-func (server *SSOServer) LogoutAll(ctx context.Context, req *sso.TokenRequest) (resp *sso.LogoutResponse, err error) {
+func (server *SSOServer) LogoutAll(ctx context.Context, req *sso.TokenRequest) (resp *sso.StatusResponse, err error) {
 	err = server.authService.LogoutAll(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.LogoutResponse{
+	return &sso.StatusResponse{
 		Stat: true,
 	}, nil
 }
 
 func (server *SSOServer) LogoutSession(
-	ctx context.Context, req *sso.LogoutSessionRequest) (resp *sso.LogoutResponse, err error) {
+	ctx context.Context, req *sso.LogoutSessionRequest) (resp *sso.StatusResponse, err error) {
 
 	err = server.authService.LogoutSession(ctx, req.Token, req.TokenForLogout)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.LogoutResponse{
+	return &sso.StatusResponse{
 		Stat: true,
 	}, nil
 }
@@ -145,14 +148,14 @@ func (server *SSOServer) GetUser(ctx context.Context, req *sso.TokenRequest) (re
 }
 
 func (server *SSOServer) RemoveCurrentUser(
-	ctx context.Context, req *sso.TokenRequest) (resp *sso.RemoveCurrentUserResponse, err error) {
+	ctx context.Context, req *sso.TokenRequest) (resp *sso.StatusResponse, err error) {
 
 	err = server.authService.RemoveCurrentUser(ctx, req.Token)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.RemoveCurrentUserResponse{
+	return &sso.StatusResponse{
 		Stat: true,
 	}, nil
 }
@@ -171,14 +174,14 @@ func (server *SSOServer) GetAllSessions(
 }
 
 func (server *SSOServer) UpdateUserName(
-	ctx context.Context, req *sso.UpdateUserNameRequest) (resp *sso.UpdateUserNameResponse, err error) {
+	ctx context.Context, req *sso.UpdateUserNameRequest) (resp *sso.StatusResponse, err error) {
 
 	err = server.authService.UpdateUserName(ctx, req.Token, req.NewName)
 	if err != nil {
 		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
 	}
 
-	return &sso.UpdateUserNameResponse{
+	return &sso.StatusResponse{
 		Stat: true,
 	}, nil
 }
@@ -206,6 +209,39 @@ func (server *SSOServer) GetAllUsers(
 
 	return &sso.GetAllUsersResponse{
 		Users: userSessions,
+	}, nil
+}
+
+func (server *SSOServer) RemoveUser(ctx context.Context, req *sso.TargetRequest) (reso *sso.StatusResponse, err error) {
+	err = server.authService.RemoveUser(ctx, req.Token, req.TargetEmail)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.StatusResponse{
+		Stat: true,
+	}, nil
+}
+
+func (server *SSOServer) BanUser(ctx context.Context, req *sso.TargetRequest) (resp *sso.StatusResponse, err error) {
+	err = server.authService.BanUser(ctx, req.Token, req.TargetEmail)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.StatusResponse{
+		Stat: true,
+	}, nil
+}
+
+func (server *SSOServer) UnBanUser(ctx context.Context, req *sso.TargetRequest) (resp *sso.StatusResponse, err error) {
+	err = server.authService.UnBanUser(ctx, req.Token, req.TargetEmail)
+	if err != nil {
+		return nil, status.Error(customErrors.GetGrpcStatus(err), err.Error())
+	}
+
+	return &sso.StatusResponse{
+		Stat: true,
 	}, nil
 }
 

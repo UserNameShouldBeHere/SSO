@@ -21,7 +21,10 @@ type AuthStorage interface {
 	GetUser(ctx context.Context, email string) (domain.User, error)
 	RemoveCurrentUser(ctx context.Context, email string) error
 	UpdateUserName(ctx context.Context, email string, newName string) error
-	GetAllUsers(ctx context.Context, email string) ([]domain.UserSession, error)
+	GetAllUsers(ctx context.Context, dispatcherEmail string) ([]domain.UserSession, error)
+	RemoveUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
+	BanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
+	UnBanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
 }
 
 type SessionStorage interface {
@@ -29,6 +32,7 @@ type SessionStorage interface {
 	Check(ctx context.Context, token string) (bool, error)
 	LogoutCurrent(ctx context.Context, token string) error
 	LogoutAll(ctx context.Context, token string) error
+	LogoutAllByEmail(ctx context.Context, email string) error
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUserEmail(ctx context.Context, token string) (string, error)
 	GetUserSessions(ctx context.Context, email string) ([]string, error)
@@ -271,6 +275,66 @@ func (authService *AuthService) GetUsersSessions(ctx context.Context, token stri
 	}
 
 	return users, nil
+}
+
+func (authService *AuthService) RemoveUser(ctx context.Context, token string, targetEmail string) error {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.RemoveUser): %w", err)
+		return err
+	}
+
+	err = authService.authStorage.RemoveUser(ctx, email, targetEmail)
+	if err != nil {
+		authService.logger.Errorf("failed to remove user (service.RemoveUser): %w", err)
+		return err
+	}
+
+	err = authService.sessionStorage.LogoutAllByEmail(ctx, targetEmail)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.RemoveUser): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) BanUser(ctx context.Context, token string, targetEmail string) error {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.BanUser): %w", err)
+		return err
+	}
+
+	err = authService.authStorage.BanUser(ctx, email, targetEmail)
+	if err != nil {
+		authService.logger.Errorf("failed to ban user (service.BanUser): %w", err)
+		return err
+	}
+
+	err = authService.sessionStorage.LogoutAllByEmail(ctx, targetEmail)
+	if err != nil {
+		authService.logger.Errorf("failed to logout session (service.BanUser): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) UnBanUser(ctx context.Context, token string, targetEmail string) error {
+	email, err := authService.sessionStorage.GetUserEmail(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to get user email (service.UnBanUser): %w", err)
+		return err
+	}
+
+	err = authService.authStorage.UnBanUser(ctx, email, targetEmail)
+	if err != nil {
+		authService.logger.Errorf("failed to get unban user (service.UnBanUser): %w", err)
+		return err
+	}
+
+	return nil
 }
 
 func hashPassword(password string, salt []byte) ([]byte, error) {

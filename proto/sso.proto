@@ -9,15 +9,19 @@ option go_package = "./sso";
 service SSO {
     rpc SignUp(SignUpRequest) returns (SignUpResponse) {}
     rpc SignIn(SignInRequest) returns (SignInResponse) {}
-    rpc Check(TokenRequest) returns (CheckResponse) {}
-    rpc LogoutCurrent(TokenRequest) returns (LogoutResponse) {}
-    rpc LogoutAll(TokenRequest) returns (LogoutResponse) {}
-    rpc LogoutSession(LogoutSessionRequest) returns (LogoutResponse) {} // logout provided session
+    rpc Check(TokenRequest) returns (StatusResponse) {}
+    rpc LogoutCurrent(TokenRequest) returns (StatusResponse) {}
+    rpc LogoutAll(TokenRequest) returns (StatusResponse) {}
+    rpc LogoutSession(LogoutSessionRequest) returns (StatusResponse) {} // logout provided session
     rpc GetUser(TokenRequest) returns (GetUserResponse) {}
-    rpc RemoveCurrentUser(TokenRequest) returns (RemoveCurrentUserResponse) {}
+    rpc RemoveCurrentUser(TokenRequest) returns (StatusResponse) {}
     rpc GetAllSessions(TokenRequest) returns (GetAllSessionsResponse) {}
-    rpc UpdateUserName(UpdateUserNameRequest) returns (UpdateUserNameResponse) {}
+    rpc UpdateUserName(UpdateUserNameRequest) returns (StatusResponse) {}
+
     rpc GetAllUsers(TokenRequest) returns (GetAllUsersResponse) {}
+    rpc RemoveUser(TargetRequest) returns (StatusResponse) {}
+    rpc BanUser(TargetRequest) returns (StatusResponse) {}
+    rpc UnBanUser(TargetRequest) returns (StatusResponse) {}
 }
 
 message SignUpRequest {
@@ -41,11 +45,7 @@ message TokenRequest {
     string token = 1;
 }
 
-message CheckResponse {
-    bool stat = 1;
-}
-
-message LogoutResponse {
+message StatusResponse {
     bool stat = 1;
 }
 
@@ -66,10 +66,6 @@ message GetUserResponse {
     User user = 1;
 }
 
-message RemoveCurrentUserResponse {
-    bool stat = 1;
-}
-
 message GetAllSessionsResponse {
     repeated string tokens = 1;
 }
@@ -77,9 +73,6 @@ message GetAllSessionsResponse {
 message UpdateUserNameRequest {
     string token = 1;
     string newName = 2;
-}
-message UpdateUserNameResponse {
-    bool stat = 1;
 }
 
 message UserSession {
@@ -93,4 +86,9 @@ message UserSession {
 
 message GetAllUsersResponse {
     repeated UserSession users = 1;
+}
+
+message TargetRequest {
+    string token = 1;
+    string targetEmail = 2;
 }
