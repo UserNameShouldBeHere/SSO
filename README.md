@@ -16,7 +16,7 @@ And currently available extended permissions:
 - user:ban (ban user)
 - user:unban (unban user)
 
-All these roles can be modified in config file, and additional roles can be added
+All these roles can be modified or additional roles can be added in [config file](cmd/config.yml)
 
 ## Methods
 
