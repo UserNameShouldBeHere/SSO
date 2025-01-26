@@ -6,10 +6,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/argon2"
 
+	ssoconfig "github.com/UserNameShouldBeHere/SSO/internal/config"
 	"github.com/UserNameShouldBeHere/SSO/internal/domain"
 	customErrors "github.com/UserNameShouldBeHere/SSO/internal/errors"
 )
@@ -17,6 +19,7 @@ import (
 type AuthStorage interface {
 	CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) error
 	GetPassword(ctx context.Context, email string) (string, error)
+	GetPermissionsLevel(ctx context.Context, email string) (uint32, error)
 	GetUser(ctx context.Context, email string) (domain.User, error)
 	RemoveCurrentUser(ctx context.Context, email string) error
 	UpdateUserName(ctx context.Context, email string, newName string) error
@@ -31,6 +34,7 @@ type AuthStorage interface {
 type SessionStorage interface {
 	CreateSession(ctx context.Context, email string) (string, error)
 	Check(ctx context.Context, token string) (bool, error)
+	CheckWithEmail(ctx context.Context, email string, token string) (bool, error)
 	LogoutCurrent(ctx context.Context, token string) error
 	LogoutAll(ctx context.Context, token string) error
 	LogoutAllByEmail(ctx context.Context, email string) error
@@ -47,14 +51,54 @@ type AuthService struct {
 }
 
 func NewAuthService(
-	authStorage AuthStorage, sessionStorage SessionStorage, logger *zap.SugaredLogger) (*AuthService, error) {
+	authStorage AuthStorage,
+	sessionStorage SessionStorage,
+	logger *zap.SugaredLogger,
+	myConfig *ssoconfig.Config) (*AuthService, error) {
 
-	return &AuthService{
+	authService := AuthService{
 		authStorage:    authStorage,
 		sessionStorage: sessionStorage,
 		logger:         logger,
 		saltLength:     10,
-	}, nil
+	}
+
+	go func() {
+		roles := make([]domain.Role, len(myConfig.Roles))
+		users := make([]domain.UserCredantialsFull, len(myConfig.Users))
+
+		for i, role := range myConfig.Roles {
+			roles[i] = domain.Role{
+				Level:       role.Id,
+				Name:        role.Name,
+				Permissions: role.Permissions,
+			}
+		}
+
+		for i, user := range myConfig.Users {
+			users[i] = domain.UserCredantialsFull{
+				Email:            user.Email,
+				Name:             user.Name,
+				Password:         user.Password,
+				PermissionsLevel: user.RoleId,
+			}
+		}
+
+		// used to wait until database container starts
+		time.Sleep(time.Second * 10)
+
+		err := authService.fillRoles(context.Background(), roles)
+		if err != nil {
+			authService.logger.Errorf("%w (service.NewAuthService): %w", customErrors.ErrInternal, err)
+		}
+
+		err = authService.fillUsers(context.Background(), users)
+		if err != nil {
+			authService.logger.Errorf("%w (service.NewAuthService): %w", customErrors.ErrInternal, err)
+		}
+	}()
+
+	return &authService, nil
 }
 
 func (authService *AuthService) CreateUser(ctx context.Context, userCreds domain.UserCredantialsReg) (string, error) {
@@ -90,13 +134,24 @@ func (authService *AuthService) CreateUser(ctx context.Context, userCreds domain
 }
 
 func (authService *AuthService) LoginUser(ctx context.Context, userCreds domain.UserCredantialsLog) (string, error) {
-	expectedPassword, err := authService.authStorage.GetPassword(ctx, userCreds.Email)
+	permissionsLevel, err := authService.authStorage.GetPermissionsLevel(ctx, userCreds.Email)
 	if err != nil {
 		if errors.Is(err, customErrors.ErrDoesNotExist) {
 			authService.logger.Errorf("user doesn't exist (service.LoginUser)")
 			return "", fmt.Errorf("%w (service.LoginUser)", customErrors.ErrIncorrectEmailOrPassword)
 		}
 
+		authService.logger.Errorf("failed to get password (service.LoginUser): %w", err)
+		return "", fmt.Errorf("(service.LoginUser): %w", err)
+	}
+
+	if permissionsLevel == 0 {
+		authService.logger.Errorf("user banned (service.LoginUser)")
+		return "", fmt.Errorf("%w (service.LoginUser)", customErrors.ErrPermissionsDenied)
+	}
+
+	expectedPassword, err := authService.authStorage.GetPassword(ctx, userCreds.Email)
+	if err != nil {
 		authService.logger.Errorf("failed to get password (service.LoginUser): %w", err)
 		return "", fmt.Errorf("(service.LoginUser): %w", err)
 	}
@@ -141,7 +196,18 @@ func (authService *AuthService) Check(ctx context.Context, token string) bool {
 }
 
 func (authService *AuthService) LogoutCurrent(ctx context.Context, token string) error {
-	err := authService.sessionStorage.LogoutCurrent(ctx, token)
+	stat, err := authService.sessionStorage.Check(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.LogoutCurrent): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.LogoutCurrent)")
+		return fmt.Errorf("%w (service.LogoutCurrent)", customErrors.ErrUnauthenticated)
+	}
+
+	err = authService.sessionStorage.LogoutCurrent(ctx, token)
 	if err != nil {
 		authService.logger.Errorf("failed to logout session (service.LogoutCurrent): %w", err)
 		return err
@@ -151,7 +217,18 @@ func (authService *AuthService) LogoutCurrent(ctx context.Context, token string)
 }
 
 func (authService *AuthService) LogoutAll(ctx context.Context, token string) error {
-	err := authService.sessionStorage.LogoutAll(ctx, token)
+	stat, err := authService.sessionStorage.Check(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.LogoutAll): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.LogoutAll)")
+		return fmt.Errorf("%w (service.LogoutAll)", customErrors.ErrUnauthenticated)
+	}
+
+	err = authService.sessionStorage.LogoutAll(ctx, token)
 	if err != nil {
 		authService.logger.Errorf("failed to logout session (service.LogoutAll): %w", err)
 		return err
@@ -161,7 +238,18 @@ func (authService *AuthService) LogoutAll(ctx context.Context, token string) err
 }
 
 func (authService *AuthService) LogoutSession(ctx context.Context, token string, tokenForLogout string) error {
-	err := authService.sessionStorage.LogoutSession(ctx, token, tokenForLogout)
+	stat, err := authService.sessionStorage.Check(ctx, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.LogoutSession): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.LogoutSession)")
+		return fmt.Errorf("%w (service.LogoutSession)", customErrors.ErrUnauthenticated)
+	}
+
+	err = authService.sessionStorage.LogoutSession(ctx, token, tokenForLogout)
 	if err != nil {
 		authService.logger.Errorf("failed to logout session (service.LogoutSession): %w", err)
 		return err
@@ -175,6 +263,17 @@ func (authService *AuthService) GetUser(ctx context.Context, token string) (doma
 	if err != nil {
 		authService.logger.Errorf("failed to get user email (service.GetUser): %w", err)
 		return domain.User{}, err
+	}
+
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.GetUser): %w", err)
+		return domain.User{}, err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.GetUser)")
+		return domain.User{}, fmt.Errorf("%w (service.GetUser)", customErrors.ErrUnauthenticated)
 	}
 
 	user, err := authService.authStorage.GetUser(ctx, email)
@@ -191,6 +290,17 @@ func (authService *AuthService) RemoveCurrentUser(ctx context.Context, token str
 	if err != nil {
 		authService.logger.Errorf("failed to get user email (service.RemoveCurrentUser): %w", err)
 		return err
+	}
+
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.RemoveCurrentUser): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.RemoveCurrentUser)")
+		return fmt.Errorf("%w (service.RemoveCurrentUser)", customErrors.ErrUnauthenticated)
 	}
 
 	err = authService.sessionStorage.LogoutAll(ctx, token)
@@ -215,6 +325,17 @@ func (authService *AuthService) GetAllSessions(ctx context.Context, token string
 		return nil, err
 	}
 
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.GetAllSessions): %w", err)
+		return nil, err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.GetAllSessions)")
+		return nil, fmt.Errorf("%w (service.GetAllSessions)", customErrors.ErrUnauthenticated)
+	}
+
 	tokens, err := authService.sessionStorage.GetUserSessions(ctx, email)
 	if err != nil {
 		authService.logger.Errorf("failed to get user sessions (service.GetAllSessions): %w", err)
@@ -231,6 +352,17 @@ func (authService *AuthService) UpdateUserName(ctx context.Context, token string
 		return err
 	}
 
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.UpdateUserName): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.UpdateUserName)")
+		return fmt.Errorf("%w (service.UpdateUserName)", customErrors.ErrUnauthenticated)
+	}
+
 	err = authService.authStorage.UpdateUserName(ctx, email, newName)
 	if err != nil {
 		authService.logger.Errorf("failed to get all users (service.UpdateUserName): %w", err)
@@ -245,6 +377,17 @@ func (authService *AuthService) GetUsersSessions(ctx context.Context, token stri
 	if err != nil {
 		authService.logger.Errorf("failed to get user email (service.GetUsersSessions): %w", err)
 		return nil, err
+	}
+
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.GetUsersSessions): %w", err)
+		return nil, err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.GetUsersSessions)")
+		return nil, fmt.Errorf("%w (service.GetUsersSessions)", customErrors.ErrUnauthenticated)
 	}
 
 	users, err := authService.authStorage.GetAllUsers(ctx, email)
@@ -273,6 +416,17 @@ func (authService *AuthService) RemoveUser(ctx context.Context, token string, ta
 		return err
 	}
 
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.RemoveUser): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.RemoveUser)")
+		return fmt.Errorf("%w (service.RemoveUser)", customErrors.ErrUnauthenticated)
+	}
+
 	err = authService.authStorage.RemoveUser(ctx, email, targetEmail)
 	if err != nil {
 		authService.logger.Errorf("failed to remove user (service.RemoveUser): %w", err)
@@ -293,6 +447,17 @@ func (authService *AuthService) BanUser(ctx context.Context, token string, targe
 	if err != nil {
 		authService.logger.Errorf("failed to get user email (service.BanUser): %w", err)
 		return err
+	}
+
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.BanUser): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.BanUser)")
+		return fmt.Errorf("%w (service.BanUser)", customErrors.ErrUnauthenticated)
 	}
 
 	err = authService.authStorage.BanUser(ctx, email, targetEmail)
@@ -317,6 +482,17 @@ func (authService *AuthService) UnBanUser(ctx context.Context, token string, tar
 		return err
 	}
 
+	stat, err := authService.sessionStorage.CheckWithEmail(ctx, email, token)
+	if err != nil {
+		authService.logger.Errorf("failed to check session (service.UnBanUser): %w", err)
+		return err
+	}
+
+	if !stat {
+		authService.logger.Errorf("unauthenticated (service.UnBanUser)")
+		return fmt.Errorf("%w (service.UnBanUser)", customErrors.ErrUnauthenticated)
+	}
+
 	err = authService.authStorage.UnBanUser(ctx, email, targetEmail)
 	if err != nil {
 		authService.logger.Errorf("failed to get unban user (service.UnBanUser): %w", err)
@@ -326,7 +502,7 @@ func (authService *AuthService) UnBanUser(ctx context.Context, token string, tar
 	return nil
 }
 
-func (authService *AuthService) FillRoles(ctx context.Context, roles []domain.Role) error {
+func (authService *AuthService) fillRoles(ctx context.Context, roles []domain.Role) error {
 	err := authService.authStorage.FillRoles(ctx, roles)
 	if err != nil {
 		authService.logger.Errorf("failed to fill roles (service.FillRoles): %w", err)
@@ -336,7 +512,7 @@ func (authService *AuthService) FillRoles(ctx context.Context, roles []domain.Ro
 	return nil
 }
 
-func (authService *AuthService) FillUsers(ctx context.Context, users []domain.UserCredantialsFull) error {
+func (authService *AuthService) fillUsers(ctx context.Context, users []domain.UserCredantialsFull) error {
 	for i := range users {
 		salt, err := genRandomSalt(authService.saltLength)
 		if err != nil {

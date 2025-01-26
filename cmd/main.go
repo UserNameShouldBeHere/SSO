@@ -82,14 +82,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	authService, err := services.NewAuthService(authStorage, sessionStorage, sugarLogger)
+	authService, err := services.NewAuthService(authStorage, sessionStorage, sugarLogger, myConfig)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	err = myConfig.FillDB(context.Background(), authService)
-	if err != nil {
-		fmt.Printf("error at filling database: %v", err)
 	}
 
 	s := grpc.NewServer()

@@ -97,37 +97,3 @@ func (config *Config) parse() error {
 
 	return nil
 }
-
-func (config *Config) FillDB(ctx context.Context, authService AuthService) error {
-	roles := make([]domain.Role, len(config.Roles))
-	users := make([]domain.UserCredantialsFull, len(config.Users))
-
-	for i, role := range config.Roles {
-		roles[i] = domain.Role{
-			Level:       role.Id,
-			Name:        role.Name,
-			Permissions: role.Permissions,
-		}
-	}
-
-	for i, user := range config.Users {
-		users[i] = domain.UserCredantialsFull{
-			Email:            user.Email,
-			Name:             user.Name,
-			Password:         user.Password,
-			PermissionsLevel: user.RoleId,
-		}
-	}
-
-	err := authService.FillRoles(ctx, roles)
-	if err != nil {
-		return fmt.Errorf("%w (config.FillDB): %w", customErrors.ErrInternal, err)
-	}
-
-	err = authService.FillUsers(ctx, users)
-	if err != nil {
-		return fmt.Errorf("%w (config.FillDB): %w", customErrors.ErrInternal, err)
-	}
-
-	return nil
-}

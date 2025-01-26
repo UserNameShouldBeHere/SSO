@@ -71,6 +71,25 @@ func (authStorage *AuthStorage) GetPassword(ctx context.Context, email string) (
 	return password, nil
 }
 
+func (authStorage *AuthStorage) GetPermissionsLevel(ctx context.Context, email string) (uint32, error) {
+	var permissionsLevel uint32
+
+	err := authStorage.pool.QueryRow(ctx, `
+		select permissions_level
+		from users
+		where email = $1;
+	`, email).Scan(&permissionsLevel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, fmt.Errorf("%w (postgres.GetPermissionsLevel): %w", customErrors.ErrDoesNotExist, err)
+		}
+
+		return 0, fmt.Errorf("%w (postgres.GetPermissionsLevel): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	return permissionsLevel, nil
+}
+
 func (authStorage *AuthStorage) GetUser(ctx context.Context, email string) (domain.User, error) {
 	var user domain.User
 

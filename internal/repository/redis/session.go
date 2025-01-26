@@ -75,6 +75,15 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 	return boolCmd.Val(), nil
 }
 
+func (sessionStorage *SessionStorage) CheckWithEmail(ctx context.Context, email string, token string) (bool, error) {
+	boolCmd := sessionStorage.rdb.SIsMember(ctx, email, token)
+	if err := boolCmd.Err(); err != nil {
+		return false, fmt.Errorf("%w (redis.CheckWithEmail): %w", customErrors.ErrUnauthenticated, err)
+	}
+
+	return boolCmd.Val(), nil
+}
+
 func (sessionStorage *SessionStorage) LogoutCurrent(ctx context.Context, token string) error {
 	email, err := sessionStorage.GetUserEmail(ctx, token)
 	if err != nil {
