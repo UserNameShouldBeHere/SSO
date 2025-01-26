@@ -1,3 +1,6 @@
+# SSO [![License](https://img.shields.io/github/license/UserNameShouldBeHere/SSO)](https://opensource.org/license/mit) [![Lang](https://img.shields.io/github/languages/top/UserNameShouldBeHere/SSO)]([https://opensource.org/license/mit](https://go.dev/))
+
+
 ## Some info
 
 This project is a simple implementation of SSO written in Go.
