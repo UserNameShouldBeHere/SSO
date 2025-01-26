@@ -74,7 +74,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sessionStorage, err := redisRepo.NewSessionStorage(rdb, myConfig.Server.SessionExpiration, myConfig.Server.FlushInterval)
+	sessionStorage, err := redisRepo.NewSessionStorage(
+		rdb,
+		myConfig.Server.SessionExpiration,
+		myConfig.Server.FlushInterval)
 	if err != nil {
 		log.Fatal(err)
 	}

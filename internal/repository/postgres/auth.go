@@ -427,7 +427,10 @@ func (authStorage *AuthStorage) FillUsers(ctx context.Context, users []domain.Us
 		}
 	}
 
-	_, err := authStorage.pool.CopyFrom(ctx, pgx.Identifier{"users"}, []string{"name", "email", "password", "permissions_level"},
+	_, err := authStorage.pool.CopyFrom(
+		ctx,
+		pgx.Identifier{"users"},
+		[]string{"name", "email", "password", "permissions_level"},
 		pgx.CopyFromRows(usersToUpload))
 	if err != nil {
 		return fmt.Errorf("%w (postgres.FillUsers): %w", customErrors.ErrFailedToExecuteQuery, err)

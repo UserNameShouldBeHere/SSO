@@ -76,7 +76,9 @@ func (config *Config) parse() error {
 	for _, user := range config.Users {
 		_, ok := users[user.Email]
 		if ok {
-			return fmt.Errorf("%w (config.parse): user with email '%s' already exists", customErrors.ErrAlreadyExists, user.Email)
+			return fmt.Errorf("%w (config.parse): user with email '%s' already exists",
+				customErrors.ErrAlreadyExists,
+				user.Email)
 		}
 
 		users[user.Email] = struct{}{}
