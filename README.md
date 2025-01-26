@@ -47,7 +47,7 @@ All these roles can be modified or additional roles can be added in [config file
 
 ### File structure
 
-```
+```yml
 roles:
   - name: owner
     id: 2
