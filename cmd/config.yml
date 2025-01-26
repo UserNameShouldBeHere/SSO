@@ -12,9 +12,6 @@ roles:
     id: 2
     permissions:
       - user:getall
-      - user:remove
-      - user:ban
-      - user:unban
 
   - name: owner
     id: 3
