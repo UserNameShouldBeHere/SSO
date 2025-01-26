@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/argon2"
@@ -25,6 +24,8 @@ type AuthStorage interface {
 	RemoveUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
 	BanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
 	UnBanUser(ctx context.Context, dispatcherEmail string, targetEmail string) error
+	FillRoles(ctx context.Context, roles []domain.Role) error
+	FillUsers(ctx context.Context, users []domain.UserCredantialsFull) error
 }
 
 type SessionStorage interface {
@@ -36,7 +37,6 @@ type SessionStorage interface {
 	LogoutSession(ctx context.Context, token string, tokenForLogout string) error
 	GetUserEmail(ctx context.Context, token string) (string, error)
 	GetUserSessions(ctx context.Context, email string) ([]string, error)
-	FlushExpiredSessions(ctx context.Context) error
 }
 
 type AuthService struct {
@@ -48,17 +48,6 @@ type AuthService struct {
 
 func NewAuthService(
 	authStorage AuthStorage, sessionStorage SessionStorage, logger *zap.SugaredLogger) (*AuthService, error) {
-
-	go func() {
-		for {
-			err := sessionStorage.FlushExpiredSessions(context.Background())
-			if err != nil {
-				logger.Errorf("failed to flush expired sessions (service.NewAuthService): %w", err)
-			}
-
-			time.Sleep(time.Minute * 10)
-		}
-	}()
 
 	return &AuthService{
 		authStorage:    authStorage,
@@ -331,6 +320,44 @@ func (authService *AuthService) UnBanUser(ctx context.Context, token string, tar
 	err = authService.authStorage.UnBanUser(ctx, email, targetEmail)
 	if err != nil {
 		authService.logger.Errorf("failed to get unban user (service.UnBanUser): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) FillRoles(ctx context.Context, roles []domain.Role) error {
+	err := authService.authStorage.FillRoles(ctx, roles)
+	if err != nil {
+		authService.logger.Errorf("failed to fill roles (service.FillRoles): %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (authService *AuthService) FillUsers(ctx context.Context, users []domain.UserCredantialsFull) error {
+	for i := range users {
+		salt, err := genRandomSalt(authService.saltLength)
+		if err != nil {
+			authService.logger.Errorf("failed to generate salt (service.FillUsers): %w", err)
+			return fmt.Errorf("%w (service.FillUsers): %w", customErrors.ErrInternal, err)
+		}
+
+		hash, err := hashPassword(users[i].Password, salt)
+		if err != nil {
+			authService.logger.Errorf("failed to hash password (service.FillUsers): %w", err)
+			return fmt.Errorf("%w (service.FillUsers): %w", customErrors.ErrInternal, err)
+		}
+
+		hashedPassword := append(salt, hash...)
+
+		users[i].Password = base64.RawStdEncoding.EncodeToString(hashedPassword)
+	}
+
+	err := authService.authStorage.FillUsers(ctx, users)
+	if err != nil {
+		authService.logger.Errorf("failed to fill users (service.FillUsers): %w", err)
 		return err
 	}
 

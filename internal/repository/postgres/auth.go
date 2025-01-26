@@ -20,6 +20,7 @@ type PgxPool interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 }
 
 type AuthStorage struct {
@@ -389,6 +390,47 @@ func (authStorage *AuthStorage) UnBanUser(ctx context.Context, dispatcherEmail s
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return fmt.Errorf("%w (postgres.UnBanUser): %w", customErrors.ErrFailedToCommitTx, err)
+	}
+
+	return nil
+}
+
+func (authStorage *AuthStorage) FillRoles(ctx context.Context, roles []domain.Role) error {
+	rolesToUpload := make([][]interface{}, len(roles))
+
+	for i, role := range roles {
+		rolesToUpload[i] = []interface{}{
+			role.Level,
+			role.Name,
+			role.Permissions,
+		}
+	}
+
+	_, err := authStorage.pool.CopyFrom(ctx, pgx.Identifier{"permission"}, []string{"level", "name", "plist"},
+		pgx.CopyFromRows(rolesToUpload))
+	if err != nil {
+		return fmt.Errorf("%w (postgres.FillRoles): %w", customErrors.ErrFailedToExecuteQuery, err)
+	}
+
+	return nil
+}
+
+func (authStorage *AuthStorage) FillUsers(ctx context.Context, users []domain.UserCredantialsFull) error {
+	usersToUpload := make([][]interface{}, len(users))
+
+	for i, user := range users {
+		usersToUpload[i] = []interface{}{
+			user.Name,
+			user.Email,
+			user.Password,
+			user.PermissionsLevel,
+		}
+	}
+
+	_, err := authStorage.pool.CopyFrom(ctx, pgx.Identifier{"users"}, []string{"name", "email", "password", "permissions_level"},
+		pgx.CopyFromRows(usersToUpload))
+	if err != nil {
+		return fmt.Errorf("%w (postgres.FillUsers): %w", customErrors.ErrFailedToExecuteQuery, err)
 	}
 
 	return nil
