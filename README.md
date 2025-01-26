@@ -45,7 +45,29 @@ All these roles can be modified or additional roles can be added in [config file
 
 ## Config
 
-#### roles
+### File structure
+
+```
+roles:
+  - name: owner
+    id: 2
+    permissions:
+      - role:getall
+      - role:remove
+
+users:
+  - email: admin
+    name: admin
+    password: admin
+    role-id: 2
+
+server:
+  session-expiration: 3600
+  flush-interval: 3600
+
+```
+
+### roles
 
 `roles` field used to predefine roles with permissions. There are 2 roles that are defined in [init.sql](db/init.sql):
 - none (for banned user)
@@ -53,11 +75,11 @@ All these roles can be modified or additional roles can be added in [config file
 
 Other roles can be added in this section
 
-#### users
+### users
 
 `users` field used to predefine users with roles. For example, define an owner with all permissions to have access to managment methods
 
-#### server
+### server
 
 `server` field used to set specific constants like session expiration or flushing interval for expired sessions
 
