@@ -1,3 +1,23 @@
+## Some info
+
+This project is a simple implementation of SSO written in Go.
+
+There are 2 common roles:
+- none (stands for banned users)
+- guest (common role for new users)
+
+Additional roles can be added, like:
+- admin (admins can manipulate other users)
+- owner
+
+And currently available extended permissions:
+- user:getall (show the list of other users)
+- user:remove (remove other user)
+- user:ban (ban user)
+- user:unban (unban user)
+
+All these roles can be modified in config file, and additional roles can be added
+
 ## Methods
 
 ### For current user:
@@ -20,29 +40,7 @@
 - BanUser
 - UnBanUser
 
-## Docs
-
-### Some info
-
-This project is a simple implementation of SSO written in Go.
-
-There are 2 common roles:
-- none (stands for banned users)
-- guest (common role for new users)
-
-Additional roles can be added, like:
-- admin (admins can manipulate other users)
-- owner
-
-And currently available extended permissions:
-- user:getall (show the list of other users)
-- user:remove (remove other user)
-- user:ban (ban user)
-- user:unban (unban user)
-
-All these roles can be modified in config file, and additional roles can be added
-
-### Config
+## Config
 
 #### roles
 
