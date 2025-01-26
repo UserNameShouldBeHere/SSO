@@ -1,6 +1,6 @@
 ## Methods
 
------------------------- for current user ------------------------
+### For current user:
 
 - SignUp
 - SignIn
@@ -13,7 +13,7 @@
 - GetAllSessions
 - UpdateUserName
 
-------- for managment (required specific permissions) -------
+### For managment (required specific permissions):
 
 - GetAllUsers
 - RemoveUser
