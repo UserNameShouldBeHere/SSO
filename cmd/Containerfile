@@ -14,5 +14,6 @@ FROM docker.io/library/golang:1.23
 WORKDIR /src
 
 COPY --from=build /src/sso sso
+COPY --from=build /src/cmd/config.yml cmd/config.yml
 
 CMD ["./sso"]

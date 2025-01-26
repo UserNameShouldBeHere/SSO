@@ -20,6 +20,6 @@ create table if not exists users (
 );
 
 insert into permission(level, name) values (0, 'none'), (1, 'guest');
-insert into permission(level, name, plist) values (2, 'admin', array['user:getall']);
-insert into permission(level, name, plist) values (3, 'owner', array['user:getall','user:remove','user:ban','user:unban']);
+-- insert into permission(level, name, plist) values (2, 'admin', array['user:getall']);
+-- insert into permission(level, name, plist) values (3, 'owner', array['user:getall','user:remove','user:ban','user:unban']);
 

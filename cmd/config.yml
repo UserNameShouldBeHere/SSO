@@ -1,0 +1,33 @@
+roles:
+  # these roles are predefined in init.sql
+
+  # - name: none
+  #   id: 0
+  # - name: guest
+  #   id: 1
+
+  # change the following roles or add some new
+
+  - name: admin
+    id: 2
+    permissions:
+      - user:getall
+
+  - name: owner
+    id: 3
+    permissions:
+      - user:getall
+      - user:remove
+      - user:ban
+      - user:unban
+
+# predefined users
+users:
+  - email: aboba
+    name: aboba
+    password: aboba
+    role-id: 3
+
+server:
+  session-expiration: 3600 # in seconds
+  flush-interval: 600 # in seconds

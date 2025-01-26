@@ -15,21 +15,36 @@ import (
 type SessionStorage struct {
 	rdb            *redis.Client
 	expirationTime int // in seconds
+	flushInterval  int // in seconds
 	jwtKey         []byte
 }
 
-func NewSessionStorage(rdb *redis.Client, tokenExpiration int) (*SessionStorage, error) {
+func NewSessionStorage(rdb *redis.Client, tokenExpiration int, flushInterval int) (*SessionStorage, error) {
 	jwtKey := make([]byte, 16)
 	_, err := rand.Read(jwtKey)
 	if err != nil {
 		return nil, fmt.Errorf("%w (redis.NewSessionStorage): %w", customErrors.ErrFailedToGenJWTKey, err)
 	}
 
-	return &SessionStorage{
+	sessionStorage := &SessionStorage{
 		rdb:            rdb,
 		expirationTime: tokenExpiration,
+		flushInterval:  flushInterval,
 		jwtKey:         jwtKey,
-	}, nil
+	}
+
+	go func() {
+		for {
+			err := sessionStorage.FlushExpiredSessions(context.Background())
+			if err != nil {
+				fmt.Printf("failed to flush expired sessions (redis.NewSessionStorage): %v", err)
+			}
+
+			time.Sleep(time.Second * time.Duration(flushInterval))
+		}
+	}()
+
+	return sessionStorage, nil
 }
 
 func (sessionStorage *SessionStorage) CreateSession(ctx context.Context, email string) (string, error) {
@@ -55,6 +70,15 @@ func (sessionStorage *SessionStorage) Check(ctx context.Context, token string) (
 	boolCmd := sessionStorage.rdb.SIsMember(ctx, email, token)
 	if err = boolCmd.Err(); err != nil {
 		return false, fmt.Errorf("%w (redis.Check): %w", customErrors.ErrUnauthenticated, err)
+	}
+
+	return boolCmd.Val(), nil
+}
+
+func (sessionStorage *SessionStorage) CheckWithEmail(ctx context.Context, email string, token string) (bool, error) {
+	boolCmd := sessionStorage.rdb.SIsMember(ctx, email, token)
+	if err := boolCmd.Err(); err != nil {
+		return false, fmt.Errorf("%w (redis.CheckWithEmail): %w", customErrors.ErrUnauthenticated, err)
 	}
 
 	return boolCmd.Val(), nil

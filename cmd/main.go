@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/UserNameShouldBeHere/SSO/internal/api"
+	ssoconfig "github.com/UserNameShouldBeHere/SSO/internal/config"
 	sso "github.com/UserNameShouldBeHere/SSO/internal/proto"
 	postgresRepo "github.com/UserNameShouldBeHere/SSO/internal/repository/postgres"
 	redisRepo "github.com/UserNameShouldBeHere/SSO/internal/repository/redis"
@@ -68,12 +69,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sessionStorage, err := redisRepo.NewSessionStorage(rdb, 60*60)
+	myConfig, err := ssoconfig.NewConfig("cmd/config.yml")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	authService, err := services.NewAuthService(authStorage, sessionStorage, sugarLogger)
+	sessionStorage, err := redisRepo.NewSessionStorage(
+		rdb,
+		myConfig.Server.SessionExpiration,
+		myConfig.Server.FlushInterval)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	authService, err := services.NewAuthService(authStorage, sessionStorage, sugarLogger, myConfig)
 	if err != nil {
 		log.Fatal(err)
 	}

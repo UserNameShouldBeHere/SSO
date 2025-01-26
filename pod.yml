@@ -8,13 +8,13 @@ spec:
       image: localhost/postgres
       env:
         - name: POSTGRES_PASSWORD
-          value: "postgres"
+          value: "root1234"
         - name: POSTGRES_USER
           value: "postgres"
     - name: redis
       image: docker.io/library/redis:7.4
-    - name: sso
+    - name: app
       image: localhost/sso
       ports:
         - containerPort: 4001
-        - hostPort: 4001
+          hostPort: 4001
