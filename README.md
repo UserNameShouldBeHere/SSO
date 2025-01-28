@@ -64,7 +64,7 @@ users:
 server:
   session-expiration: 3600
   flush-interval: 3600
-
+  salt-length: 10
 ```
 
 ### roles
@@ -81,7 +81,7 @@ Other roles can be added in this section
 
 ### server
 
-`server` field used to set specific constants like session expiration or flushing interval for expired sessions
+`server` field used to set specific constants like session expiration flushing interval for expired sessions or password salt length
 
 ## How to run SSO?
 1) First setup [config](cmd/config.yml)
