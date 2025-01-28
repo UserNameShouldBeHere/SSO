@@ -31,3 +31,4 @@ users:
 server:
   session-expiration: 3600 # in seconds
   flush-interval: 600 # in seconds
+  salt-length: 10

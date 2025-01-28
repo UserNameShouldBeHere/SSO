@@ -60,7 +60,7 @@ func NewAuthService(
 		authStorage:    authStorage,
 		sessionStorage: sessionStorage,
 		logger:         logger,
-		saltLength:     10,
+		saltLength:     myConfig.Server.SaltLength,
 	}
 
 	go func() {

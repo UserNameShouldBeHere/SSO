@@ -26,6 +26,7 @@ type Config struct {
 	Server struct {
 		SessionExpiration int `yaml:"session-expiration"`
 		FlushInterval     int `yaml:"flush-interval"`
+		SaltLength        int `yaml:"salt-length"`
 	} `yaml:"server"`
 }
 
